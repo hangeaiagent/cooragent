@@ -151,7 +151,7 @@ python cli.py
 
 Create a Xiaomi stock analysis agent with a single command
 ```
-run -t agent_workflow -u <user> -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend over the past month, predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
+run -t agent_factory -u <user> -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend over the past month, predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
 ```
 
 ## Edit an Agent
