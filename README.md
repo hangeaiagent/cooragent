@@ -24,6 +24,7 @@ Cooragent can continuously evolve in these two modes, thus creating infinite pos
 
 # Quick Installation
 
+1. Installation using conda
 ```bash
 git clone https://github.com/LeapLabTHU/cooragent.git
 cd cooragent
@@ -33,9 +34,12 @@ conda activate cooragent
 
 pip install -e .
 
+# Optional: If you need to use the browser tool
 playwright install
 
+# Configure environment
 cp .env.example .env
+# Edit .env file and fill in your API keys
 
 python cli.py
 ```

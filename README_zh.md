@@ -24,6 +24,7 @@ Cooragent 可以在两种模式下不断演进，从而创造出无限可能。
 
 # 快速安装
 
+1. 使用 conda 安装
 ```bash
 git clone https://github.com/LeapLabTHU/cooragent.git
 cd cooragent
@@ -33,10 +34,14 @@ conda activate cooragent
 
 pip install -e .
 
+# Optional: 使用 browser 工具时需要安装
 playwright install
 
+# 配置 API keys 和其他环境变量
 cp .env.example .env
+# Edit .env file and fill in your API keys
 
+# 通过 CLi 本地运行
 python cli.py 
 ```
 
