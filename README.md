@@ -234,6 +234,19 @@ We welcome contributions of all forms! Whether it's fixing typos, improving docu
 
 This project is open-source, based on the [MIT License](LICENSE).
 
+## Citation
+
+Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
+
+```
+@misc{wang2025cooragent,
+  title        = {Cooragent: An AI Agent Collaboration Community},
+  author       = {Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang},
+  howpublished = {\url{https://github.com/LeapLabTHU/cooragent}},
+  year         = {2025}
+}
+```
+
 ## Acknowledgments
 
 Special thanks to all the open-source projects and contributors that made cooragent possible. We stand on the shoulders of giants.
