@@ -218,7 +218,7 @@ Cooragent is designed with extreme openness and compatibility in mind, ensuring 
   - Efficient Context Management: Through MCP, context information across multiple agents or multi-turn interactions can be managed and transferred more effectively, reducing information loss and improving the efficiency of complex task processing.
   - Enhanced Interoperability: Support for MCP enables Cooragent to better interoperate with other systems or platforms that follow the protocol, building a broader and more powerful intelligent ecosystem.
 - Comprehensive API Call Support:
-  Cooragent's core functions are exposed through comprehensive APIs (e.g., RESTful API), providing developers with powerful programmatic control.
+  Cooragent's core functions are exposed through comprehensive APIs, providing developers with powerful programmatic control.
   - Programmatic Management: Through API calls, you can automate the entire lifecycle management of agents, including creation, deployment, configuration updates, start/stop, etc.
   - Task Integration: Integrate Cooragent's task submission and result retrieval capabilities into your own applications, scripts, or workflow engines.
   - Status Monitoring and Logging: Obtain real-time operational status, performance metrics, and detailed logs of agents via API for convenient monitoring and debugging.
