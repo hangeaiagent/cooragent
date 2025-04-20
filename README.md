@@ -151,7 +151,7 @@ python cli.py
 
 Create a Xiaomi stock analysis agent with a single command
 ```
-run -t agent_factory -u <user> -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend over the past month, predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
+run -t agent_factory -u test -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend over the past month, predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
 ```
 
 ## Edit an Agent
@@ -169,7 +169,7 @@ remove-agent -n <agent_name> -u <user-id>
 
 ## Use a Group of Agents to Collaboratively Complete Complex Tasks
 ```
-run -t agent_workflow -u <user> -m 'Use the task planning agent, web crawler agent, code execution agent, browser operation agent, report writing agent, and file operation agent to plan a trip to Yunnan for the May Day holiday in 2025. First, run the web crawler agent to fetch information about Yunnan tourist attractions, use the browser operation agent to browse the attraction information and select the top 10 most worthwhile attractions. Then, plan a 5-day itinerary, use the report writing agent to generate a travel report, and finally use the file operation agent to save the report as a PDF file.'
+run -t agent_workflow -u test -m 'Use the task planning agent, web crawler agent, code execution agent, browser operation agent, report writing agent, and file operation agent to plan a trip to Yunnan for the May Day holiday in 2025. First, run the web crawler agent to fetch information about Yunnan tourist attractions, use the browser operation agent to browse the attraction information and select the top 10 most worthwhile attractions. Then, plan a 5-day itinerary, use the report writing agent to generate a travel report, and finally use the file operation agent to save the report as a PDF file.'
 ```
 
 ## Create an Agent via MCP
