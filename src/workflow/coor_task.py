@@ -111,7 +111,7 @@ def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]:
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     if state.get("search_before_planning"):
-        searched_content = tavily_tool.invoke({"query": state["messages"][-1]["content"]})
+        searched_content = tavily_tool.invoke({"query": [''.join(message["content"]) for message in state["messages"] if message["role"] == "user"][0]})
         messages = deepcopy(messages)
         messages[-1]["content"] += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
     
@@ -148,7 +148,7 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
 
     goto = "__end__"
-    if "handoff_to_planner" in response.content:
+    if "go_to_planner" in response.content:
         goto = "planner"
 
     return Command(

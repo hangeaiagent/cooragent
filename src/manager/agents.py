@@ -1,6 +1,7 @@
 from langgraph.prebuilt import create_react_agent
 from src.interface.mcp_types import Tool
 from src.prompts import apply_prompt_template, get_prompt_template
+import os
 
 from src.tools import (
     bash_tool,
@@ -88,6 +89,11 @@ class AgentManager:
             tavily_tool.name: tavily_tool,
         }
 
+        if os.environ.get("USE_BROWSER", "False"):
+            del self.available_agents["browser"]
+            self.available_tools[browser_tool.name]
+            logger.setLevel(logging.DEBUG)
+            logger.info("Debug logging enabled.")
         self._load_agents(USR_AGENT, MCP_AGENT)
         
     def _create_mcp_agent(self, user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):

@@ -29,7 +29,7 @@ CODE_MODEL = os.getenv("CODE_MODEL")
 
 USR_AGENT = os.getenv("USR_AGENT", True)
 MCP_AGENT = os.getenv("MCP_AGENT", False)
-
+USE_BROWSER = os.getenv("USE_BROWSER", False)
 DEBUG = os.getenv("DEBUG", False)
 
 if DEBUG != "True":
