@@ -13,7 +13,7 @@ Cooragent is an AI agent collaboration community. In this community, you can cre
 
 
 <h5 align="center">
-<video src="https://github.com/user-attachments/assets/9af611e3-aed6-4a2f-8663-428a7707fe8d" width="70%" alt="web browser control" controls></video>
+<video src="https://github.com/user-attachments/assets/9af611e3-aed6-4a2f-8663-428a7707fe8d" width="70%" alt="introduce cooragent" controls></video>
 </h5>
 
 # Infinite Possibilities
