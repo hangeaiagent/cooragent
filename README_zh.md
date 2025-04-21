@@ -11,8 +11,9 @@
 
 Cooragent 是一个 AI 智能体协作社区。在这个社区中，你可以通过一句话创建一个具备强大功能的智能体，并与其他智能体协作完成复杂任务。智能体可以自由组合，创造出无限可能。与此同时，你还可以将你的智能体发布到社区中，与其他人共享。
 
+
 <h5 align="center">
-<video src="https://github.com/user-attachments/assets/a70dd04e-4124-4b0d-a0ea-d22c549254ba" width="352" height="720"></video>
+<video src="https://github.com/user-attachments/assets/9af611e3-aed6-4a2f-8663-428a7707fe8d" width="70%" alt="introduce cooragent" controls></video>
 </h5>
 
 
