@@ -5,6 +5,9 @@ build-backend = "hatchling.build"
 [project]
 name = "cooragent"
 version = "0.1.0"
+authors = [
+  { name="wangzheng", email="georgewang2011@163.com" },
+]
 description = "Cooragent project"
 readme = "README.md"
 requires-python = ">=3.12"

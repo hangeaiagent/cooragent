@@ -1,6 +1,7 @@
 from langgraph.prebuilt import create_react_agent
 from src.interface.mcp_types import Tool
 from src.prompts import apply_prompt_template, get_prompt_template
+import os
 
 from src.tools import (
     bash_tool,

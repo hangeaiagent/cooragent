@@ -122,7 +122,7 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
 
     goto = "__end__"
-    if "handoff_to_planner" in response.content:
+    if "go_to_planner" in response.content:
         goto = "planner"
         
     return Command(
