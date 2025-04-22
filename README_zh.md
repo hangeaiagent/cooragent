@@ -237,6 +237,24 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 
 本项目是开源的，基于 [MIT 许可证](LICENSE)。
 
+<div align="center" style="display: flex; gap: 20px;">
+    <img src="assets/wechat_community.jpg" alt="Cooragent group" width="300" />
+</div>
+
+
+## Citation
+
+核心贡献者: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
+
+```
+@misc{wang2025cooragent,
+  title        = {Cooragent: An AI Agent Collaboration Community},
+  author       = {Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang},
+  howpublished = {\url{https://github.com/LeapLabTHU/cooragent}},
+  year         = {2025}
+}
+```
+
 ## 致谢
 
 特别感谢所有让 cooragent 成为可能的开源项目和贡献者。我们站在巨人的肩膀上。
