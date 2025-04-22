@@ -43,7 +43,17 @@ def apply_prompt_template(prompt_name: str, state: AgentState, template:str=None
 
     return [{"role": "system", "content": system_prompt}] + messages
 
+def decorate_prompt(template: str) -> list:
+    variables = re.findall(r"<<([^>>]+)>>", template)
+    template = template.replace("{", "{{").replace("}", "}}")
+    # Replace `<<VAR>>` with `{VAR}`
+    template = re.sub(r"<<([^>>]+)>>", r"{\1}", template)
+    if "CURRENT_TIME" not in template:
+        template = "Current time: {CURRENT_TIME}\n\n" + template
+    return template
+
 def apply_prompt(state: AgentState, template:str=None) -> list:
+    template = decorate_prompt(template)
     _prompt = PromptTemplate(
         input_variables=["CURRENT_TIME"],
         template=template,

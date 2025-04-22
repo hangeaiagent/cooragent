@@ -20,7 +20,7 @@ Your primary responsibilities are:
 - For all other inputs:
   - Handoff to planner with the following format:
   ```python
-  go_to_planner()
+  handover_to_planner()
   ```
 
 # Notes

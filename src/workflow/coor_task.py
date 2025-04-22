@@ -83,8 +83,7 @@ def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__"]]:
     """Proxy node that acts as a proxy for the agent."""
     _agent = agent_manager.available_agents[state["next"]]
     agent = create_react_agent(
-        # get_llm_by_type(_agent.llm_type),
-        get_llm_by_type("basic"),
+        get_llm_by_type(_agent.llm_type),
         tools=[agent_manager.available_tools[tool.name] for tool in _agent.selected_tools],
         prompt=apply_prompt(state, _agent.prompt),
     )
@@ -148,7 +147,7 @@ def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
 
     goto = "__end__"
-    if "go_to_planner" in response.content:
+    if "handover_to_planner" in response.content:
         goto = "planner"
 
     return Command(
