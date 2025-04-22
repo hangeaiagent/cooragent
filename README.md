@@ -232,10 +232,6 @@ Cooragent is designed with extreme openness and compatibility in mind, ensuring 
 
 We welcome contributions of all forms! Whether it's fixing typos, improving documentation, or adding new features, your help will be greatly appreciated. Please check out our [contribution guidelines](CONTRIBUTING.md) to learn how to get started.
 
-## License
-
-This project is open-source, based on the [MIT License](LICENSE).
-
 ## Community Group
 Join our group on wechat and share your experience with other developers!
 
@@ -256,10 +252,10 @@ Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shij
 }
 ```
 
-## Acknowledgments
-
-Special thanks to all the open-source projects and contributors that made cooragent possible. We stand on the shoulders of giants.
-
 ## Star History
-
 ![Star History Chart](https://api.star-history.com/svg?repos=LeapLabTHU/cooragent&type=Date)
+
+
+
+## Acknowledgments
+Special thanks to all the open-source projects and contributors that made cooragent possible. We stand on the shoulders of giants.

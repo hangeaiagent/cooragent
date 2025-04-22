@@ -233,9 +233,6 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 
 我们欢迎各种形式的贡献！无论是修复错别字、改进文档，还是添加新功能，您的帮助都将备受感激。请查看我们的[贡献指南](CONTRIBUTING.md)了解如何开始。
 
-## 许可证
-
-本项目是开源的，基于 [MIT 许可证](LICENSE)。
 
 欢迎加入我们的 wechat 群，随时提问，分享，吐槽。
 
@@ -246,7 +243,7 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 
 ## Citation
 
-核心贡献者: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
+Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
 
 ```
 @misc{wang2025cooragent,
@@ -257,6 +254,9 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 }
 ```
 
-## 致谢
+## Star History
+![Star History Chart](https://api.star-history.com/svg?repos=LeapLabTHU/cooragent&type=Date)
 
+
+## 致谢
 特别感谢所有让 cooragent 成为可能的开源项目和贡献者。我们站在巨人的肩膀上。
