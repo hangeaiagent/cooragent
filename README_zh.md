@@ -237,6 +237,8 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 
 本项目是开源的，基于 [MIT 许可证](LICENSE)。
 
+欢迎加入我们的 wechat 群，随时提问，分享，吐槽。
+
 <div align="center" style="display: flex; gap: 20px;">
     <img src="assets/wechat_community.jpg" alt="Cooragent group" width="300" />
 </div>
