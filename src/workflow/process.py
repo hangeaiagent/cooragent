@@ -162,34 +162,34 @@ async def _process_workflow(
                     if key != "messages":
                         state[key] = value
                     
-                    if key == "messages" and agent_name in ["planner", "coordinator", "agent_proxy"] and isinstance(value, list) and value:
+                    if key == "messages" and isinstance(value, list) and value:
                         state["messages"] += value
                         last_message = value[-1]
                         if 'content' in last_message:
                             if agent_name == "coordinator":
                                 content = last_message["content"]
-                                if content.startswith("handoff"):
+                                if content.startswith("handover"):
                                     # mark handoff, do not send maesages
                                     global is_handoff_case
                                     is_handoff_case = True
                                     continue
-                            
-                            content = last_message["content"]
-                            chunk_size = 10  # send 10 words for each chunk
-                            for i in range(0, len(content), chunk_size):
-                                chunk = content[i:i+chunk_size]
-                                if 'processing_agent_name' in state:
-                                    agent_name = state['processing_agent_name']
-                  
-                                yield {
-                                    "event": "messages",
-                                    "agent_name": agent_name,
-                                    "data": {
-                                        "message_id": f"{workflow_id}_{agent_name}_msg_{i}",
-                                        "delta": {"content": chunk},
-                                    },
-                                }
-                                await asyncio.sleep(0.01)
+                            if agent_name in ["planner", "coordinator", "agent_proxy"]:
+                                content = last_message["content"]
+                                chunk_size = 10  # send 10 words for each chunk
+                                for i in range(0, len(content), chunk_size):
+                                    chunk = content[i:i+chunk_size]
+                                    if 'processing_agent_name' in state:
+                                        agent_name = state['processing_agent_name']
+                    
+                                    yield {
+                                        "event": "messages",
+                                        "agent_name": agent_name,
+                                        "data": {
+                                            "message_id": f"{workflow_id}_{agent_name}_msg_{i}",
+                                            "delta": {"content": chunk},
+                                        },
+                                    }
+                                    await asyncio.sleep(0.01)
 
                     if agent_name == "agent_factory" and key == "new_agent_name":
                         yield {
