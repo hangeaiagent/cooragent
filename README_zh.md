@@ -62,6 +62,7 @@ uv sync
 playwright install
 
 # 配置 API keys 和其他环境变量
+# 注意 Browse tool 等待时间较长，默认是关闭的。可以通过设置  `USE_BROWSER=True` 开启
 cp .env.example .env
 # Edit .env file and fill in your API keys
 
@@ -153,7 +154,7 @@ python cli.py
 
 一句话创建小米股票分析智能体
 ```
-run -t agent_workflow -u test -m '创建一个股票分析专家 agent，分析过去一个月的小米股票走势，并预测下个交易日的股价走势，并给出买入或卖出的建议。'
+run -t agent_workflow -u test -m '创建一个股票分析专家 agent. 今天是 2025年 4 月 22 日，查看过去一个月的小米股票走势，分析当前小米的热点新闻，预测下个交易日的股价走势，并给出买入或卖出的建议。'
 ```
 
 ## 编辑智能体

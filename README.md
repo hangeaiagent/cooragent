@@ -72,6 +72,8 @@ uv run cli.py
 Create a `.env` file in the project root directory and configure the following environment variables:
 
 ```bash
+# Note: The Browse tool has a long wait time and is disabled by default. It can be enabled by setting: `USE_BROWSER=True`
+.
 cp .env.example .env
 ```
 
@@ -151,7 +153,7 @@ python cli.py
 
 Create a Xiaomi stock analysis agent with a single command
 ```
-run -t agent_factory -u test -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend over the past month, predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
+run -t agent_factory -u test -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend, today is 22 April, 2025, look over the past month, analyze the big news about Xiaomi, then predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
 ```
 
 ## Edit an Agent
