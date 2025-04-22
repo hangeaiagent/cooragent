@@ -236,6 +236,13 @@ We welcome contributions of all forms! Whether it's fixing typos, improving docu
 
 This project is open-source, based on the [MIT License](LICENSE).
 
+## Community Group
+Join our networking group on Feishu and share your experience with other developers!
+
+<div align="center" style="display: flex; gap: 20px;">
+    <img src="assets/wechat_community.jpg" alt="Cooragent group" width="300" />
+</div>
+
 ## Citation
 
 Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
