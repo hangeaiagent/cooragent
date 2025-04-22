@@ -266,7 +266,7 @@ async def run(ctx, user_id, task_type, message, debug, deep_thinking, agents):
         messages=messages,
         debug=debug,
         deep_thinking_mode=deep_thinking,
-        search_before_planning=False,
+        search_before_planning=True,
         coor_agents=list(agents)
     )
     

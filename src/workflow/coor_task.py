@@ -83,7 +83,7 @@ def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__"]]:
     """Proxy node that acts as a proxy for the agent."""
     _agent = agent_manager.available_agents[state["next"]]
     agent = create_react_agent(
-        get_llm_by_type("basic"),
+        get_llm_by_type(_agent.llm_type),
         tools=[agent_manager.available_tools[tool.name] for tool in _agent.selected_tools],
         prompt=apply_prompt(state, _agent.prompt),
     )
