@@ -18,37 +18,38 @@ ENV APP_ENV=development
 ENV TAVILY_API_KEY=tvly-dev-***
 ENV ANONYMIZED_TELEMETRY=false
 ENV SLACK_USER_TOKEN=***
-# -------------- 内网环境配置 --------------
-# 设置固定时区（内网常用）
+
+# -------------- Internal Network Environment Configuration --------------
+# Set fixed timezone (commonly used in internal networks)
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-
-# -------------- 构建阶段 --------------
-
-# 安装内网定制的uv工具（指定版本+内网源）
+# -------------- Build Phase  --------------
+# Install the internally customized uv tool (specific version + internal network source)
 RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple uv
 
-# -------------- 项目准备 --------------
+# -------------- Project Preparation --------------
 WORKDIR /app
-
 COPY pyproject.toml .
 COPY . /app
 COPY .env /app/.env
 
-ENV http_proxy=http://10.16.6.112:7890
-ENV https_proxy=http://10.16.6.112:7890
-ENV NO_PROXY=localhost,127.0.0.1,10.0.0.0/8
-# -------------- 虚拟环境构建 --------------
-# 创建虚拟环境（指定内网Python 3.12）
+ENV http_proxy=**
+ENV https_proxy=**
+ENV NO_PROXY=**
+
+# -------------- Virtual Environment Setup --------------
+# Create a virtual environment (specify internal Python 3.12)
 RUN uv python install 3.12
 RUN uv venv --python 3.12
 ENV UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-# 激活环境并安装依赖（内网镜像源）
+
+# Activate the environment and install dependencies (internal mirror source)
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN uv sync
 
 EXPOSE 9000
-# 启动命令（内网监听配置）
+
+# Startup command (internal network listening configuration)
 CMD ["uv", "run", "src/service/app.py","--port", "9000"]
