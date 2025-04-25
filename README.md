@@ -65,23 +65,7 @@ cp .env.example .env
 # Run the project
 uv run cli.py 
 ```
-3. Installed on Windows
-
-```bash
-# Note:If you want to run this project on the Windows platform, in addition to the above steps, you also need to install:
-pip install pyreadline (conda)
-uv pip install pyreadline (venv)
-```
-Then, you need to find `.\envs\cooragent\Lib\site-packages\pyreadline\py3k_compat.py` in your Anaconda installation path 
-or `.venv\Lib\site-packages\pyreadline\py3k_compat.py` in your venv path 
-and change 
-```python
-return isinstance(x, collections.Callable)
-```
-to
-```python
-return isinstance(x, collections.abc.Callable)
-```
+**Note**: If running the project's CLI tool on Windows, besides the steps above, you also need to install additional dependencies. For details, please refer to [Windows Platform Support](./docs/QA.md).
 
 ## Configuration
 
@@ -220,7 +204,9 @@ agent_obj = Agent(user_id="share",
 
 MCPManager.register_agent("mcp_excel_agent", agent, agent_obj)
 ```
-Code can be found at [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)
+Code can be found at [src/mcp/excel_agent.py](./src/mcp/excel_agent.py).
+**Note** : To enable MCP support, you need to set MCP_AGENT to True in the .env file (it defaults to False).
+
 
 ## Documentation & Support
 - [Frequently Asked Questions (FAQ)](./docs/QA.md)

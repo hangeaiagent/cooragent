@@ -46,6 +46,7 @@ cp .env.example .env
 python cli.py 
 ```
 
+
 2. Installation using venv
 ```bash
 git clone https://github.com/LeapLabTHU/cooragent.git
@@ -69,23 +70,8 @@ cp .env.example .env
 # 通过 CLi 本地运行
 uv run cli.py 
 ```
-3.在windows上安装
+**注意**：如果在 windows 平台运行本项目 cli 工具，除了上述步骤外，还需要安装额外依赖，详见[windows-平台支持](./docs/QA_zh.md#windows-平台支持)。
 
-```bash
-# 如果在windows平台运行本项目，除了上述步骤外，还需要安装：
-pip install pyreadline (conda)
-uv pip install pyreadline (venv)
-```
-然后，你需要找到Anaconda安装路径下的 `.\envs\cooragent\Lib\site-packages\pyreadline\py3k_compat.py`
-或者 venv路径下的 `.venv\Lib\site-packages\pyreadline\py3k_compat.py`
-并将
-```python
-return isinstance(x, collections.Callable)
-```
-修改为
-```python
-return isinstance(x, collections.abc.Callable)
-```
 ## 配置
 
 在项目根目录创建 `.env` 文件并配置以下环境变量：
@@ -221,7 +207,8 @@ agent_obj = Agent(user_id="share",
 
 MCPManager.register_agent("mcp_excel_agent", agent, agent_obj)
 ```
-代码见 [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)
+代码见 [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)。
+**注意**: 要开启 MCP 的支持需要在 `.env` 文件中将 `MCP_AGENT` 设置为 True （默认为False）。
 
 
 ## 文档 & 支持

@@ -24,7 +24,14 @@ Cooragent 平台正在加紧打磨中，近期即将发布，敬请期待！
 
 ## Windows 平台的支持
 
-Cooragent CLI 工具目前已经支持 Windows 平台。但是，我们推荐您使用 Linux、macOS 或者 Windows Subsystem for Linux (WSL) 进行本地开发和部署。
+目前主要是 cli 工具的依赖包 `readline` 不支持，解决方法如下：
+```bash
+pip install pyreadline
+# 在安装目录下找到 lib\site-packages\pyreadline\py3k_compat.py 
+return isinstance(x, collections.Callable) -> return isinstance(x, collections.abc.Callable)
+```
+
+但是，我们更推荐您使用 Linux、macOS 或者 Windows Subsystem for Linux (WSL) 进行本地开发和部署。
 
 ## 开启 Debug 模式的方式
 Cooragent 允许用户通过在启动命令附加 `--debug` 开启 Debug 模式，debug 模式将输出更加详尽的日志信息。
