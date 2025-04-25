@@ -65,6 +65,7 @@ cp .env.example .env
 # Run the project
 uv run cli.py 
 ```
+**Note**: If running the project's CLI tool on Windows, besides the steps above, you also need to install additional dependencies. For details, please refer to [Windows Platform Support](./docs/QA.md).
 
 ## Configuration
 
@@ -203,7 +204,9 @@ agent_obj = Agent(user_id="share",
 
 MCPManager.register_agent("mcp_excel_agent", agent, agent_obj)
 ```
-Code can be found at [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)
+Code can be found at [src/mcp/excel_agent.py](./src/mcp/excel_agent.py).
+**Note** : To enable MCP support, you need to set MCP_AGENT to True in the .env file (it defaults to False).
+
 
 ## Documentation & Support
 - [Frequently Asked Questions (FAQ)](./docs/QA.md)
