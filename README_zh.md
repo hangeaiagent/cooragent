@@ -208,6 +208,10 @@ MCPManager.register_agent("mcp_excel_agent", agent, agent_obj)
 代码见 [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)
 
 
+## 文档 & 支持
+- [常见问题 (FAQ)](./docs/QA_zh.md)
+- [商业支持计划](./docs/business_support_zh.md)
+
 
 ## 全面的兼容性
 Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝融入现有的 AI 开发生态，并为开发者提供最大的灵活性。这主要体现在对 Langchain 工具链的深度兼容、对MCP (Model Context Protocol) 协议的支持以及全面的 API 调用能力上。
