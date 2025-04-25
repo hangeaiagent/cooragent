@@ -27,7 +27,7 @@ Cooragent 平台正在加紧打磨中，近期即将发布，敬请期待！
 目前主要是 cli 工具的依赖包 `readline` 不支持，解决方法如下：
 ```bash
 pip install pyreadline
-# 在安装目录下找到 lib\site-packages\pyreadline\py3k_compat.py 
+# 在安装目录下找到 lib\site-packages\pyreadline\py3k_compat.py #line 8
 return isinstance(x, collections.Callable) -> return isinstance(x, collections.abc.Callable)
 ```
 
