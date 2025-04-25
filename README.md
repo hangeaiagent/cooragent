@@ -205,6 +205,9 @@ MCPManager.register_agent("mcp_excel_agent", agent, agent_obj)
 ```
 Code can be found at [src/mcp/excel_agent.py](./src/mcp/excel_agent.py)
 
+## Documentation & Support
+- [Frequently Asked Questions (FAQ)](./docs/QA.md)
+- [Business Support Plan](./docs/business_support.md)
 
 
 ## Comprehensive Compatibility
