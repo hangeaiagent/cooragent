@@ -23,12 +23,12 @@ This is usually caused by an incorrect output format from the Reasoning Model. I
 The Cooragent platform is currently being polished and will be released soon. Stay tuned!
 
 ## Windows Platform Support
+
 The primary issue is the lack of support for the `readline` dependency in the CLI tool. Here's the workaround:
 ```bash
 pip install pyreadline
-# Find `lib\site-packages\pyreadline\py3k_compat.py #line 8` in your installation directory
-return isinstance(x, collections.Callable) -> return isinstance(x, collections.abc.Callable)
 ```
+
 However, we recommend using Linux, macOS, or Windows Subsystem for Linux (WSL) for local development and deployment.
 
 ## How to Enable Debug Mode
