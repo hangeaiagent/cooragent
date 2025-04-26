@@ -16,7 +16,7 @@ Cooragent is an AI agent collaboration community. In this community, you can cre
 </h5>
 
 # Infinite Possibilities
-Cooragent has two working : **Agent Factory** and **Agent Workflow**.
+Cooragent has two working mode : **Agent Factory** and **Agent Workflow**.
 - **Agent Factory** : You only need to describe the agent, and Cooragent will generate an agent based on your needs. In Agent Factory mode, the system automatically analyzes user requirements and gains a deep understanding of the user through memory and expansion, eliminating the need for complex Prompt design. Based on a deep understanding of user needs, the Planner selects appropriate tools, automatically refines the Prompt, and gradually completes the agent construction. After construction, the agent can be used immediately, but you can still edit it to optimize its behavior and functionality.
 - **Agent Workflow** : You only need to describe the target task you want to complete, and Cooragent will automatically analyze the task requirements and select suitable agents for collaboration. The Planner combines agents based on their areas of expertise, plans the task steps and completion order, and then hands over the task to the task distribution node 'publish' for task release. Each agent receives its own task and collaborates to complete it.
 Cooragent can continuously evolve in these two modes, thus creating infinite possibilities.
