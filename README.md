@@ -183,7 +183,7 @@ Enhance your Agents by integrating external services and tools via the Model Con
     Find or create `config/mcp.json` in your project root.
 
     ```bash
-    cd config
+    cd ./config
     cp mcp.json.example mcp.json
     ```
 
@@ -194,17 +194,19 @@ Enhance your Agents by integrating external services and tools via the Model Con
     ```json
     {
         "mcpServers": {
-          "your-custom-local-server": {
-            "command": "python",
-            "args": ["-m", "your_mcp_server_module", "--port", "8080"],
+          "aws-kb-retrieval": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
             "env": {
-              "API_KEY": "YOUR_LOCAL_SERVER_API_KEY"
+              "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
+              "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
+              "AWS_REGION": "YOUR_AWS_REGION_HERE"
             }
           },
-          "your-custom-remote-service": {
-            "url": "https://your.mcp.provider.com/api/v1/mcp_endpoint",
+          "AMAP": {
+            "url": "https://mcp.amap.com/sse",
             "env": {
-              "REMOTE_SERVICE_AUTH_TOKEN": "YOUR_AUTH_TOKEN_HERE"
+              "AMAP_MAPS_API_KEY": "AMAP_MAPS_API_KEY"
             }
           }
         }
@@ -212,9 +214,14 @@ Enhance your Agents by integrating external services and tools via the Model Con
     ```
 
 
+
 **How it Works:**
 
 Once configured, Cooragent registers these MCP services as available tools. Agents can then select and use these tools during task planning and execution, enabling more complex functionalities.
+After configuration of AMAP mcpServers (GaoDe Map) as the example, you may be able to run the case below: 
+```
+Create a navigation agent that focuses on navigation and uses map-related tools to plan the route from Beijing West Railway Station to the Forbidden City.
+```
 
 ## Documentation & Support
 - [Frequently Asked Questions (FAQ)](./docs/QA.md)

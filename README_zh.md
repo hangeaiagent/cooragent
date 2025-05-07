@@ -186,7 +186,7 @@ run -t agent_workflow -u test -m '综合运用任务规划智能体，爬虫智�
     在您的项目根目录中找到或创建 `config/mcp.json` 文件。
 
     ```bash
-    cd config
+    cd ./config
     cp mcp.json.example mcp.json
     ```
 
@@ -197,17 +197,19 @@ run -t agent_workflow -u test -m '综合运用任务规划智能体，爬虫智�
     ```json
     {
         "mcpServers": {
-          "your-custom-local-server": { // 您的自定义本地服务
-            "command": "python", // 启动服务的命令
-            "args": ["-m", "your_mcp_server_module", "--port", "8080"], // 命令参数
-            "env": { // 服务运行所需的环境变量
-              "API_KEY": "YOUR_LOCAL_SERVER_API_KEY"
+          "aws-kb-retrieval": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
+            "env": {
+              "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
+              "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
+              "AWS_REGION": "YOUR_AWS_REGION_HERE"
             }
           },
-          "your-custom-remote-service": { // 您的自定义远程服务
-            "url": "https://your.mcp.provider.com/api/v1/mcp_endpoint", // 远程 MCP 服务的 URL
-            "env": { // 访问远程服务所需的环境变量 (例如认证凭据)
-              "REMOTE_SERVICE_AUTH_TOKEN": "YOUR_AUTH_TOKEN_HERE"
+          "AMAP": {
+            "url": "https://mcp.amap.com/sse",
+            "env": {
+              "AMAP_MAPS_API_KEY": "AMAP_MAPS_API_KEY"
             }
           }
         }
@@ -217,6 +219,10 @@ run -t agent_workflow -u test -m '综合运用任务规划智能体，爬虫智�
 **工作原理：**
 
 配置完成后，Cooragent 会自动将您在 `mcp.json` 中定义的这些 MCP 服务注册为可用工具。之后，智能体 (Agent) 在规划和执行任务时便可以选择和使用这些工具，从而实现更复杂的功能。
+如上配置好高德地图相关工具后，你可以尝试如下的使用案例：
+```
+创建一个导航智能体，专注于导航，使用地图相关工具，规划如何从北京西站到故宫。
+```
 
 
 ## 文档 & 支持
