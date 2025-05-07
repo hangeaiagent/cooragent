@@ -42,6 +42,7 @@ custom_theme = Theme({
     "command": "bold yellow",
     "highlight": "bold cyan",
     "agent_name": "bold blue",
+    "agent_nick_name": "bold magenta",
     "agent_desc": "green",
     "agent_type": "magenta",
     "tool_name": "bold blue",
@@ -238,9 +239,10 @@ def cli(ctx):
 @click.option('--message', '-m', required=True, multiple=True, help='Message content (use multiple times for multiple messages)')
 @click.option('--debug/--no-debug', default=False, help='Enable debug mode')
 @click.option('--deep-thinking/--no-deep-thinking', default=True, help='Enable deep thinking mode')
+@click.option('--search-before-planning/--no-search-before-planning', default=False, help='Enable search before planning')
 @click.option('--agents', '-a', multiple=True, help='List of collaborating Agents (use multiple times to add multiple Agents)')
 @async_command
-async def run(ctx, user_id, task_type, message, debug, deep_thinking, agents):
+async def run(ctx, user_id, task_type, message, debug, deep_thinking, search_before_planning, agents):
     """Run the agent workflow"""
     server = ctx.obj['server']
     
@@ -251,6 +253,7 @@ async def run(ctx, user_id, task_type, message, debug, deep_thinking, agents):
     config_table.add_row("Task Type", task_type)
     config_table.add_row("Debug Mode", "✅ Enabled" if debug else "❌ Disabled")
     config_table.add_row("Deep Thinking", "✅ Enabled" if deep_thinking else "❌ Disabled")
+    config_table.add_row("Search Before Planning", "✅ Enabled" if search_before_planning else "❌ Disabled")
     console.print(config_table)
     
     msg_table = Table(title="Message History", show_header=True, header_style="bold magenta")
@@ -274,7 +277,7 @@ async def run(ctx, user_id, task_type, message, debug, deep_thinking, agents):
         messages=messages,
         debug=debug,
         deep_thinking_mode=deep_thinking,
-        search_before_planning=True,
+        search_before_planning=search_before_planning,
         coor_agents=list(agents)
     )
     
@@ -450,6 +453,7 @@ async def list_agents(ctx, user_id, match):
         
         table = Table(title=f"Agent list for user [highlight]{user_id}[/highlight]", show_header=True, header_style="bold magenta", border_style="cyan")
         table.add_column("Name", style="agent_name")
+        table.add_column("Nickname", style="agent_nick_name")
         table.add_column("Description", style="agent_desc")
         table.add_column("Tools", style="agent_type")
         
@@ -460,7 +464,7 @@ async def list_agents(ctx, user_id, match):
                 tools = []
                 for tool in agent.get("selected_tools", []):
                     tools.append(tool.get("name", ""))
-                table.add_row(agent.get("agent_name", ""), agent.get("description", ""), ', '.join(tools))
+                table.add_row(agent.get("agent_name", ""), agent.get("nick_name", ""), agent.get("description", ""), ', '.join(tools))
                 count += 1
             except:
                 stream_print(f"[danger]Parsing error: {agent_json}[/danger]")
@@ -489,13 +493,14 @@ async def list_default_agents(ctx):
         
         table = Table(title="Default Agent List", show_header=True, header_style="bold magenta", border_style="cyan")
         table.add_column("Name", style="agent_name")
+        table.add_column("Nickname", style="agent_nick_name")
         table.add_column("Description", style="agent_desc")
         
         count = 0
         async for agent_json in server._list_default_agents():
             try:
                 agent = json.loads(agent_json)
-                table.add_row(agent.get("agent_name", ""), agent.get("description", ""))
+                table.add_row(agent.get("agent_name", ""),agent.get("nick_name", ""), agent.get("description", ""))
                 count += 1
             except:
                 stream_print(f"[danger]Parsing error: {agent_json}[/danger]")
@@ -687,9 +692,9 @@ async def remove_agent(ctx, agent_name, user_id):
         async for result_json in server._remove_agent(request):
             result = json.loads(result_json)
             if result.get("result") == "success":
-                stream_print(Panel.fit(f"[success]✅ {result.get('messages', 'Agent deleted successfully!')}[/success]", border_style="green"))
+                stream_print(Panel.fit(f"[success]✅ {result.get('message', 'Agent deleted successfully!')}[/success]", border_style="green"))
             else:
-                stream_print(Panel.fit(f"[danger]❌ {result.get('messages', 'Agent deletion failed!')}[/danger]", border_style="red"))
+                stream_print(Panel.fit(f"[danger]❌ {result.get('message', 'Agent deletion failed!')}[/danger]", border_style="red"))
     except Exception as e:
         stream_print(Panel.fit(f"[danger]Error occurred during deletion: {str(e)}[/danger]", border_style="red"))
 
@@ -707,6 +712,7 @@ def help():
     help_table.add_row("  -m/--message", "Message content (use multiple times)")
     help_table.add_row("  --debug/--no-debug", "Enable/disable debug mode")
     help_table.add_row("  --deep-thinking/--no-deep-thinking", "Enable/disable deep thinking mode")
+    help_table.add_row("  --search-before-planning/--no-search-before-planning", "Enable/disable search before planning (default: enabled)")
     help_table.add_row("  -a/--agents", "List of collaborating Agents")
     help_table.add_row()
     

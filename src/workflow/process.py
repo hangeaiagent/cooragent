@@ -1,15 +1,14 @@
 import logging
-from typing import Optional, Dict, Any, AsyncGenerator
+import uuid
 import asyncio
+from typing import Optional, Dict, Any, AsyncGenerator
 from src.workflow import build_graph, agent_factory_graph
-from langchain_community.adapters.openai import convert_message_to_dict
 from src.manager import agent_manager
 from src.interface.agent_types import TaskType
-import uuid
-from langchain_core.messages import HumanMessage, SystemMessage
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from src.interface.agent_types import State
+from src.service.env import USE_BROWSER
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,14 +24,21 @@ def enable_debug_logging():
 
 logger = logging.getLogger(__name__)
 
-
-DEFAULT_TEAM_MEMBERS_DESCRIPTION = """
-- **`researcher`**: Uses search engines and web crawlers to gather information from the internet. Outputs a Markdown report summarizing findings. Researcher can not do math or programming.
-- **`coder`**: Executes Python or Bash commands, performs mathematical calculations, and outputs a Markdown report. Must be used for all mathematical computations.
-- **`browser`**: Directly interacts with web pages, performing complex operations and interactions. You can also leverage `browser` to perform in-domain search, like Facebook, Instagram, Github, etc.
-- **`reporter`**: Write a professional report based on the result of each step.
-- **`agent_factory`**: Create a new agent based on the user's requirement.
-"""
+if USE_BROWSER:
+    DEFAULT_TEAM_MEMBERS_DESCRIPTION = """
+        - **`researcher`**: Uses search engines and web crawlers to gather information from the internet. Outputs a Markdown report summarizing findings. Researcher can not do math or programming.
+        - **`coder`**: Executes Python or Bash commands, performs mathematical calculations, and outputs a Markdown report. Must be used for all mathematical computations.
+        - **`browser`**: Directly interacts with web pages, performing complex operations and interactions. You can also leverage `browser` to perform in-domain search, like Facebook, Instagram, Github, etc.
+        - **`reporter`**: Write a professional report based on the result of each step.
+        - **`agent_factory`**: Create a new agent based on the user's requirement.
+        """
+else:
+    DEFAULT_TEAM_MEMBERS_DESCRIPTION = """
+        - **`researcher`**: Uses search engines and web crawlers to gather information from the internet. Outputs a Markdown report summarizing findings. Researcher can not do math or programming.
+        - **`coder`**: Executes Python or Bash commands, performs mathematical calculations, and outputs a Markdown report. Must be used for all mathematical computations.
+        - **`reporter`**: Write a professional report based on the result of each step.
+        - **`agent_factory`**: Create a new agent based on the user's requirement.
+        """
 
 TEAM_MEMBERS_DESCRIPTION_TEMPLATE = """
 - **`{agent_name}`**: {agent_description}
@@ -74,16 +80,14 @@ async def run_agent_workflow(
 
     workflow_id = str(uuid.uuid4())
 
-    DEFAULT_TEAM_MEMBERS_DESCRIPTION = """
-    - **`researcher`**: Uses search engines and web crawlers to gather information from the internet. Outputs a Markdown report summarizing findings. Researcher can not do math or programming.
-    - **`coder`**: Executes Python or Bash commands, performs mathematical calculations, and outputs a Markdown report. Must be used for all mathematical computations.
-    - **`browser`**: Directly interacts with web pages, performing complex operations and interactions. You can also leverage `browser` to perform in-domain search, like Facebook, Instagram, Github, etc.
-    - **`reporter`**: Write a professional report based on the result of each step.Please note that this agent is unable to perform any code or command-line operations.
-    - **`agent_factory`**: Create a new agent based on the user's requirement.
-    """
 
     TEAM_MEMBERS_DESCRIPTION_TEMPLATE = """
     - **`{agent_name}`**: {agent_description}
+    """
+    TOOLS_DESCRIPTION_TEMPLATE = """
+    - **`{tool_name}`**: {tool_description}
+    """
+    TOOLS_DESCRIPTION = """
     """
     TEAM_MEMBERS_DESCRIPTION = DEFAULT_TEAM_MEMBERS_DESCRIPTION
     TEAM_MEMBERS = ["agent_factory"]
@@ -93,10 +97,14 @@ async def run_agent_workflow(
 
         if agent.user_id == user_id or agent.agent_name in coor_agents:
             TEAM_MEMBERS.append(agent.agent_name)
-            
+
         if agent.user_id != "share":
             MEMBER_DESCRIPTION = TEAM_MEMBERS_DESCRIPTION_TEMPLATE.format(agent_name=agent.agent_name, agent_description=agent.description)
             TEAM_MEMBERS_DESCRIPTION += '\n' + MEMBER_DESCRIPTION
+
+    await agent_manager.load_tools()
+    for tool_name, tool in agent_manager.available_tools.items():
+        TOOLS_DESCRIPTION += '\n' + TOOLS_DESCRIPTION_TEMPLATE.format(tool_name=tool_name,tool_description=tool.description)
 
     global coordinator_cache
     coordinator_cache = []
@@ -108,19 +116,20 @@ async def run_agent_workflow(
         TextColumn("[progress.description]{task.description}"),
         console=console
     ) as progress:
-        async for event_data in _process_workflow(
-            graph,
-            {
-                "user_id": user_id,
-                "TEAM_MEMBERS": TEAM_MEMBERS,
-                "TEAM_MEMBERS_DESCRIPTION": TEAM_MEMBERS_DESCRIPTION,
-                "messages": user_input_messages,
-                "deep_thinking_mode": deep_thinking_mode,
-                "search_before_planning": search_before_planning,
-            },
-            workflow_id,
-        ):
-            yield event_data
+            async for event_data in _process_workflow(
+                graph,
+                {
+                    "user_id": user_id,
+                    "TEAM_MEMBERS": TEAM_MEMBERS,
+                    "TEAM_MEMBERS_DESCRIPTION": TEAM_MEMBERS_DESCRIPTION,
+                    "TOOLS": TOOLS_DESCRIPTION,
+                    "messages": user_input_messages,
+                    "deep_thinking_mode": deep_thinking_mode,
+                    "search_before_planning": search_before_planning,
+                },
+                workflow_id,
+            ):
+                yield event_data
 
 async def _process_workflow(
     workflow, 
@@ -151,11 +160,9 @@ async def _process_workflow(
                     "agent_id": f"{workflow_id}_{agent_name}_1",
                 },
             }
-            
-
-            
             node_func = workflow.nodes[current_node]
-            command = node_func(state)
+
+            command = await node_func(state)
             
             if hasattr(command, 'update') and command.update:
                 for key, value in command.update.items():
