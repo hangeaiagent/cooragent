@@ -2,6 +2,8 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Wechat](https://img.shields.io/badge/WeChat-cooragent-brightgreen?logo=wechat&logoColor=white)](./assets/wechat_community.jpg)
+[![GitHub stars](https://img.shields.io/github/stars/LeapLabTHU/Cooragent?style=social)](https://github.com/LeapLabTHU/Cooragent/stargazers)
+
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
@@ -277,20 +279,6 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 ### **👥 社区互动增强**
 
 增强智能体社区内的互动方式。这可能包括智能体分享市场、协作挑战等举措，旨在鼓励用户分享、发现和共同改进智能体。
-
-## **即将推出**
-
-- ✅ **MCP 规模化扩展**  
-  在 Cooragent 中大规模增加更多 MCP 服务器/工具测试和支持
-
-- ⏳ **沙箱支持**  
-  使用 Daytona 支持 Python 和 Shell 的沙箱环境
-
-- ⏳ **可视化拖拽工作流编辑**  
-  提供可视化工作流编辑功能，允许用户通过拖拽操作快速准确地编辑工作流。
-
-- ⏳**长记忆支持**  
-  使用 Redis 和向量数据库来记住用户的长记忆。
 
 ## 贡献
 
