@@ -155,7 +155,8 @@ async def run_agent_workflow(
                     "search_before_planning": search_before_planning,
                     "workflow_id": workflow_id,
                     "work_mode": workmode,
-                    "polish_instruction": polish_instruction
+                    "polish_instruction": polish_instruction,
+                    "initialized": False
                 },
             ):
                 yield event_data

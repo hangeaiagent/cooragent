@@ -79,7 +79,7 @@ async def publisher_node(state: State) -> Command[Literal["agent_proxy", "agent_
         if agent == "FINISH":
             goto = "__end__"
             logger.info("Workflow completed \n")
-            cache.restore_node(state["workflow_id"], goto)
+            cache.restore_node(state["workflow_id"], goto, state["initialized"])
             return Command(goto=goto, update={"next": goto})
         elif agent != "agent_factory":
             goto = "agent_proxy"
@@ -87,7 +87,7 @@ async def publisher_node(state: State) -> Command[Literal["agent_proxy", "agent_
             goto = "agent_factory"
         logger.info(f"publisher delegating to: {agent} \n")
         
-        cache.restore_node(state["workflow_id"], agent)
+        cache.restore_node(state["workflow_id"], agent, state["initialized"])
         
     elif state["work_mode"] in ["production", "polish"]:
         # todo add polish history 
