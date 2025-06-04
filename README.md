@@ -301,7 +301,7 @@ Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shij
 ```
 @misc{wang2025cooragent,
   title        = {Cooragent: An AI Agent Collaboration Community},
-  author       = {Zheng Wang, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang},
+  author       = {Zheng Wang, Shenzhi Wang, Yue Wu, Shiji Song, Gao Huang},
   howpublished = {\url{https://github.com/LeapLabTHU/cooragent}},
   year         = {2025}
 }
