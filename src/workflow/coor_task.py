@@ -113,6 +113,9 @@ async def publisher_node(state: State) -> Command[Literal["agent_proxy", "agent_
 async def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__"]]:
     """Proxy node that acts as a proxy for the agent."""
     _agent = agent_manager.available_agents[state["next"]]
+    logger.info(f"Agent Proxy Start to work in {state['work_mode']} workmode \n")
+    state["initialized"] = True
+            
     agent = create_react_agent(
         get_llm_by_type(_agent.llm_type),
         tools=[agent_manager.available_tools[tool.name] for tool in _agent.selected_tools],
@@ -120,7 +123,6 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__
     )
 
     response = await agent.ainvoke(state)
-    
     if state["work_mode"] == "launch":
         cache.restore_node(state["workflow_id"], _agent, state["initialized"])
     elif state["work_mode"] == "production":
