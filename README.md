@@ -296,7 +296,7 @@ Join our group on wechat and share your experience with other developers!
 
 ## Citation
 
-Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
+Core contributors: Zheng Wang, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
 
 ```
 @misc{wang2025cooragent,

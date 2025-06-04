@@ -294,12 +294,12 @@ Cooragent 在设计上追求极致的开放性和兼容性，确保能够无缝�
 
 ## Citation
 
-Core contributors: Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
+Core contributors: Zheng Wang, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang
 
 ```
 @misc{wang2025cooragent,
   title        = {Cooragent: An AI Agent Collaboration Community},
-  author       = {Zheng Wang, Jiachen Du, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang},
+  author       = {Zheng Wang, Shenzhi Wang, Yue Wu, Chi Zhang, Shiji Song, Gao Huang},
   howpublished = {\url{https://github.com/LeapLabTHU/cooragent}},
   year         = {2025}
 }
