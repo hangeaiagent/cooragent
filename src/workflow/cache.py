@@ -37,6 +37,8 @@ class WorkflowCache:
             
     def _load_workflow(self, user_id: str):
         try:
+            if user_id not in self._lock_pool:
+                self._lock_pool[user_id] = threading.Lock()
             with self._lock_pool[user_id]:
                 user_workflow_dir = self.workflow_dir / user_id
                 if not user_workflow_dir.exists():
@@ -156,6 +158,8 @@ class WorkflowCache:
         
     def restore_planning_steps(self, workflow_id: str, planning_steps, user_id: str):
         try:
+            if user_id not in self._lock_pool:
+                self._lock_pool[user_id] = threading.Lock()
             with self._lock_pool[user_id]:
                 self.cache[workflow_id]["planning_steps"] = planning_steps
         except Exception as e:
@@ -170,6 +174,8 @@ class WorkflowCache:
             logger.error(f"Error getting planning steps: {e}")
             
     def update_stack(self, workflow_id: str, user_id: str):
+        if user_id not in self._lock_pool:
+            self._lock_pool[user_id] = threading.Lock()
         with self._lock_pool[user_id]:
             self.queue[workflow_id].popleft()
     
@@ -223,6 +229,8 @@ class WorkflowCache:
             logger.info(f"restore_node node: {node}")
             if isinstance(node, Agent):
                 _agent = node
+                if user_id not in self._lock_pool:
+                    self._lock_pool[user_id] = threading.Lock()
                 with self._lock_pool[user_id]:
                     if _agent.agent_name not in self.cache[workflow_id]["agent_nodes"]:
                         self.cache[workflow_id]["agent_nodes"][_agent.agent_name] = {
@@ -251,6 +259,8 @@ class WorkflowCache:
             user_id, polish_id = workflow["workflow_id"].split(":")
             workflow_path = self.workflow_dir / user_id / f"{polish_id}.json"
             
+            if user_id not in self._lock_pool:
+                self._lock_pool[user_id] = threading.Lock()            
             with self._lock_pool[user_id]:
                 self.cache[workflow_id]["planning_steps"] = json.dumps(planning_steps, ensure_ascii=False)
                 workflow = self.cache[workflow_id]
@@ -262,6 +272,8 @@ class WorkflowCache:
 
     def dump(self, workflow_id: str, mode: str):
         try:
+            if user_id not in self._lock_pool:
+                self._lock_pool[user_id] = threading.Lock()            
             with self._lock_pool[user_id]:
                 if mode == "launch":
                     workflow = self.cache[workflow_id]
