@@ -13,6 +13,7 @@ from src.manager import agent_manager
 from src.prompts.template import apply_prompt
 from langgraph.prebuilt import create_react_agent
 from src.workflow.graph import AgentWorkflow
+from src.service.env import RECURSION_LIMIT
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from src.manager.mcp import mcp_client_config
 from src.workflow.cache import workflow_cache as cache
@@ -86,13 +87,8 @@ async def publisher_node(state: State) -> Command[Literal["agent_proxy", "agent_
         elif agent != "agent_factory":
             cache.restore_system_node(state["workflow_id"], agent, state["user_id"])
             goto = "agent_proxy"
-<<<<<<< HEAD
-        else: 
-            cache.restore_system_node(state["workflow_id"], "agent_factory")
-=======
         else:
             cache.restore_system_node(state["workflow_id"], "agent_factory", state["user_id"])
->>>>>>> e09018f (modify graph info)
             goto = "agent_factory"
        
         logger.info(f"publisher delegating to: {agent} \n")
@@ -127,8 +123,8 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__
         prompt=apply_prompt(state, _agent.prompt),
     )
 
-    response = await agent.ainvoke(state)
-    
+    response = await agent.ainvoke(state, {"recursion_limit": int(RECURSION_LIMIT)})
+
     if state["work_mode"] == "launch":
         cache.restore_node(state["workflow_id"], _agent, state["initialized"], state["user_id"])
     elif state["work_mode"] == "production":
@@ -214,11 +210,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
         logger.warning("Planner response is not a valid JSON \n")
         goto = "__end__"
     if state["work_mode"] == "launch":
-<<<<<<< HEAD
-        cache.restore_system_node(state["workflow_id"], goto)    
-=======
         cache.restore_system_node(state["workflow_id"], goto, state["user_id"])
->>>>>>> e09018f (modify graph info)
     return Command(
         update={
             "messages": [{"content":content, "tool":"planner", "role":"assistant"}],
