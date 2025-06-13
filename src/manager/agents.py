@@ -6,9 +6,9 @@ from src.prompts import apply_prompt_template, get_prompt_template
 from src.tools import (
     bash_tool,
     browser_tool,
+    crawl_tool,
     python_repl_tool,
     tavily_tool,
-    web_preview_tool,
 )
 
 from src.llm.llm import get_llm_by_type
@@ -90,9 +90,9 @@ class AgentManager:
                     
     async def load_tools(self):        
         self.available_tools.update({
-            web_preview_tool.name: web_preview_tool,
             bash_tool.name: bash_tool,
             browser_tool.name: browser_tool,
+            crawl_tool.name: crawl_tool,
             python_repl_tool.name: python_repl_tool,
             tavily_tool.name: tavily_tool,
         })
@@ -140,7 +140,7 @@ class AgentManager:
         agent_path = self.agents_dir / f"{agent_name}.json"
         if not agent_path.exists():
             raise FileNotFoundError(f"agent {agent_name} not found.")
-        with open(agent_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(agent_path, "r") as f:
             json_str = f.read()
             _agent = Agent.model_validate_json(json_str)
             if _agent.user_id == 'share':
@@ -181,9 +181,9 @@ class AgentManager:
                                         name="researcher", 
                                         nick_name="researcher", 
                                         llm_type=AGENT_LLM_MAP["researcher"], 
-                                        tools=[tavily_tool],
+                                        tools=[tavily_tool, crawl_tool], 
                                         prompt=get_prompt_template("researcher"),
-                                       description="This agent specializes in research tasks by utilizing search engines and web crawling. It can search for information using keywords, crawl specific URLs to extract content, and synthesize findings into comprehensive reports. The agent excels at gathering information from multiple sources, verifying relevance and credibility, and presenting structured conclusions based on collected data."),
+                                        description="This agent specializes in research tasks by utilizing search engines and web crawling. It can search for information using keywords, crawl specific URLs to extract content, and synthesize findings into comprehensive reports. The agent excels at gathering information from multiple sources, verifying relevance and credibility, and presenting structured conclusions based on collected data."),
         
         self._create_agent_by_prebuilt(user_id="share", 
                                         name="coder", 
@@ -200,7 +200,7 @@ class AgentManager:
                                         llm_type=AGENT_LLM_MAP["browser"], 
                                         tools=[browser_tool], 
                                         prompt=get_prompt_template("browser"), 
-                                        description="This agent specializes in web browsing and content retrieval. It can access specified websites, retrieve HTML content, and extract useful information. The agent excels at analyzing webpage content, extracting information, and collecting webpage data. It can retrieve the complete HTML content of a webpage and analyze and extract the required information."),
+                                        description="This agent specializes in interacting with web browsers. It can navigate to websites, perform actions like clicking, typing, and scrolling, and extract information from web pages. The agent is adept at handling tasks such as searching specific websites, interacting with web elements, and gathering online data. It is capable of operations like logging in, form filling, clicking buttons, and scraping content."),
     
         self._create_agent_by_prebuilt(user_id="share", 
                                         name="reporter", 
@@ -208,15 +208,7 @@ class AgentManager:
                                         llm_type=AGENT_LLM_MAP["reporter"], 
                                         tools=[], 
                                         prompt=get_prompt_template("reporter"), 
-                                        description="This agent specializes in creating clear, comprehensive reports based solely on provided information and verifiable facts. It presents data objectively, organizes information logically, and highlights key findings using professional language. The agent structures reports with executive summaries, detailed analysis, and actionable conclusions while maintaining strict data integrity and never fabricating information."),
-
-        self._create_agent_by_prebuilt(user_id="share", 
-                                        name="html_generator", 
-                                        nick_name="html_generator", 
-                                        llm_type=AGENT_LLM_MAP["reporter"], 
-                                        tools=[web_preview_tool], 
-                                        prompt=get_prompt_template("html_generator"), 
-                                        description="This agent specializes EXCLUSIVELY in generating beautiful HTML previews using web_preview_tool. Its primary and only function is to take any content and convert it into visually appealing HTML format. This agent ALWAYS uses web_preview_tool for every task - it has no other purpose. Use this agent when you need guaranteed HTML output.")
+                                        description="This agent specializes in creating clear, comprehensive reports based solely on provided information and verifiable facts. It presents data objectively, organizes information logically, and highlights key findings using professional language. The agent structures reports with executive summaries, detailed analysis, and actionable conclusions while maintaining strict data integrity and never fabricating information.")
 
                     
     async def _load_agents(self, user_agent_flag):
@@ -226,12 +218,9 @@ class AgentManager:
             agent_name = agent_path.stem
             if agent_name not in self.available_agents.keys():
                 load_tasks.append(self._load_agent(agent_name, user_agent_flag))
-        if not USE_BROWSER:
-            if "browser" in self.available_agents:
-                del self.available_agents["browser"]
-        else:
-            if "researcher" in self.available_agents:
-                del self.available_agents["researcher"]
+                
+        if not USE_BROWSER and "browser" in self.available_agents:
+            del self.available_agents["browser"]
             
 
         if load_tasks:
@@ -256,10 +245,6 @@ class AgentManager:
         agents = [agent for agent in self.available_agents.values() if agent.user_id == "share"]
         return agents
     
-    def _list_user_all_agents(self, user_id: str):
-        agents = [agent for agent in self.available_agents.values() if agent.user_id == "share" or agent.user_id == user_id]
-        return agents
-
 from src.utils.path_utils import get_project_root
 
 tools_dir = get_project_root() / "store" / "tools"
