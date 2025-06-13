@@ -63,7 +63,7 @@ class Server:
                     else:
                         logger.warning("Could not serialize agent object for new_agent_created event.")
                         if "agent_obj" in res["data"]: del res["data"]["agent_obj"]
-
+                yield res
             except (TypeError, ValueError, json.JSONDecodeError) as e:
                 logging.error(f"Error serializing event: {e}", exc_info=True)
                 
@@ -290,7 +290,7 @@ class Server:
             return container_info
         except Exception as e:
             logger.error(f"Error getting browser container info for user {user_id}: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error getting browser container info for user {user_id}: {e}")
 
     @staticmethod
     async def _get_active_tools(user_id: str):
