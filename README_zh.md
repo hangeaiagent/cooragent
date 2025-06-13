@@ -4,7 +4,6 @@
 [![Wechat](https://img.shields.io/badge/WeChat-cooragent-brightgreen?logo=wechat&logoColor=white)](./assets/wechat_community.jpg)
 [![GitHub stars](https://img.shields.io/github/stars/LeapLabTHU/Cooragent?style=social)](https://github.com/LeapLabTHU/Cooragent/stargazers)
 
-
 [English](./README.md) | [简体中文](./README_zh.md)
 
 # Cooragent 是什么
