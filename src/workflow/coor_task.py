@@ -90,7 +90,7 @@ async def publisher_node(state: State) -> Command[Literal["agent_proxy", "agent_
         else:
             cache.restore_system_node(state["workflow_id"], "agent_factory", state["user_id"])
             goto = "agent_factory"
-       
+
         logger.info(f"publisher delegating to: {agent} \n")
         
         cache.restore_node(state["workflow_id"], agent, state["initialized"], state["user_id"])
@@ -183,7 +183,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
 
         if content.endswith("```"):
             content = content.removesuffix("```")
-        
+
 
         cache.restore_planning_steps(state["workflow_id"], content, state["user_id"])
         
@@ -220,7 +220,8 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
             content = content.removesuffix("```")
 
         cache.restore_planning_steps(state["workflow_id"], content, state["user_id"])
-        
+
+
     goto = "publisher"
     try:
         json.loads(content)

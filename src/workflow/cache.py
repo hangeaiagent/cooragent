@@ -34,7 +34,7 @@ class WorkflowCache:
             self.latest_polish_id = {}
             self.initialized = True
             self._lock_pool = {}
-            
+
     def _load_workflow(self, user_id: str):
         try:
             if user_id not in self._lock_pool:
@@ -49,7 +49,7 @@ class WorkflowCache:
                 for workflow_file in user_workflow_files:
                     with open(workflow_file, "r", encoding='utf-8') as f:
                         workflow = json.load(f)
-                        self.cache[workflow["workflow_id"]] = workflow        
+                        self.cache[workflow["workflow_id"]] = workflow
         except Exception as e:
             logger.error(f"Error loading workflow: {e}")
             raise e
@@ -71,7 +71,7 @@ class WorkflowCache:
                     self.cache[workflow_id]["search_before_planning"] = search_before_planning
                     self.cache[workflow_id]["coor_agents"] = coor_agents
                 else:
-                    try:                  
+                    try:
                         if workflow_id not in self.cache:
                             user_id, polish_id = workflow_id.split(":")
                             user_workflow_dir = self.workflow_dir / user_id
@@ -83,10 +83,10 @@ class WorkflowCache:
                                 else:
                                     logger.error(f"Error loading workflow {user_workflow_file} for user {user_id}: {e}")
                                     raise Exception(f"Error loading workflow {user_workflow_file} for user {user_id}")
-                                
+
                         self.queue[workflow_id] = deque()
                         for agent in self.cache[workflow_id]["graph"]:
-                            if agent["node_type"] == "execution_agent":
+                            if agent["config"]["node_type"] == "execution_agent":
                                 self.queue[workflow_id].append(agent)
                         begin_node = {
                             "component_type": "agent",
@@ -262,18 +262,26 @@ class WorkflowCache:
                             }
                         }
                     self.cache[workflow_id]["graph"].append({
-                        "node_name": _agent.agent_name,
-                        "node_type": "execution_agent",
-                        "next_to": [],
-                        "condition": "supervised"
+                        "component_type": "agent",
+                        "label": _agent.agent_name,
+                        "name": _agent.agent_name,
+                        "config": {
+                            "node_name": _agent.agent_name,
+                            "node_type": "execution_agent",
+                            "next_to": [],
+                            "condition": "supervised"
+                        }
+
                     })
 
             elif isinstance(node, str) and workflow_initialized:
                 _next_to = node
-                if self.cache[workflow_id]["graph"][-1]["node_type"] == "execution_agent":
+                if _next_to == "__end__" :
+                    return
+                if self.cache[workflow_id]["graph"][-1]["config"]["node_type"] == "execution_agent":
                     with self._lock_pool[user_id]:
-                        if not self.cache[workflow_id]["graph"][-1]["next_to"]:
-                            self.cache[workflow_id]["graph"][-1]["next_to"].append(_next_to)
+                        if not self.cache[workflow_id]["graph"][-1]["config"]["next_to"]:
+                            self.cache[workflow_id]["graph"][-1]["config"]["next_to"].append(_next_to)
         except Exception as e:
             logger.error(f"Error restore_node: {e}")
 
@@ -301,9 +309,9 @@ class WorkflowCache:
 
             user_id, polish_id = workflow["workflow_id"].split(":")
             workflow_path = self.workflow_dir / user_id / f"{polish_id}.json"
-            
+
             if user_id not in self._lock_pool:
-                self._lock_pool[user_id] = threading.Lock()            
+                self._lock_pool[user_id] = threading.Lock()
             with self._lock_pool[user_id]:
                 with open(workflow_path, "w", encoding='utf-8') as f:
                     f.write(json.dumps(workflow, indent=2, ensure_ascii=False))
@@ -315,7 +323,7 @@ class WorkflowCache:
             workflow = self.cache[workflow_id]
             user_id, polish_id = workflow["workflow_id"].split(":")
             if user_id not in self._lock_pool:
-                self._lock_pool[user_id] = threading.Lock()            
+                self._lock_pool[user_id] = threading.Lock()
             with self._lock_pool[user_id]:
                 if mode == "launch":
                     workflow = self.cache[workflow_id]
