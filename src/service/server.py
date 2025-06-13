@@ -1,9 +1,4 @@
-import os
 from typing import Dict, List, AsyncGenerator, Optional
-import uvicorn
-from fastapi import FastAPI, HTTPException, status, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 import json
 
@@ -25,10 +20,7 @@ from src.workflow.cache import workflow_cache
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 session_manager = SessionManager()
-app = FastAPI()
-app.add_middleware(
-            CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
-        )
+
 class Server:
     def __init__(self, host="0.0.0.0", port=8001) -> None:
         self.host = host
@@ -43,7 +35,6 @@ class Server:
     ) -> AsyncGenerator[str, None]:
         if agent_manager is None:
              logger.error("Agent workflow called before AgentManager was initialized.")
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
 
         session = session_manager.get_session(request.user_id)
         for message in request.messages:
@@ -64,24 +55,16 @@ class Server:
         async for res in response_stream:
             try:
                 event_type = res.get("event")
-                # Handle new_agent_created event (agent_obj is already an Agent instance)
                 if event_type == "new_agent_created" and "data" in res and "agent_obj" in res["data"]:
                     agent_obj = res["data"]["agent_obj"]
-                    # Serialize the Agent object to JSON string if needed by client
                     agent_json = agent_obj.model_dump_json(indent=2) if agent_obj else None
                     if agent_json:
-                        res["data"]["agent_obj"] = agent_json # Replace object with JSON string
+                        res["data"]["agent_obj"] = agent_json
                     else:
-                        # Handle case where agent object is missing or serialization fails
                         logger.warning("Could not serialize agent object for new_agent_created event.")
-                        # Optionally remove the agent_obj key or the entire event
                         if "agent_obj" in res["data"]: del res["data"]["agent_obj"]
 
-                # This yield should be outside the if/else block for serialization
-                yield res
             except (TypeError, ValueError, json.JSONDecodeError) as e:
-                from traceback import print_stack
-                print_stack()
                 logging.error(f"Error serializing event: {e}", exc_info=True)
                 
     @staticmethod
@@ -89,14 +72,15 @@ class Server:
          request: "listAgentRequest"
     ) -> AsyncGenerator[str, None]:
         if agent_manager is None:
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
+             logger.error("Agent workflow called before AgentManager was initialized.")
+             raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
             agents = await agent_manager._list_agents(request.user_id, request.match)
             for agent in agents:
                 yield agent.model_dump_json() + "\n"
         except Exception as e:
             logger.error(f"Error listing agents: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing agents: {e}")
 
     @staticmethod
     async def _list_agents_json(user_id: str, match: Optional[str] = None):
@@ -104,7 +88,7 @@ class Server:
             agents = await agent_manager._list_agents(user_id, match)
             return [agent.model_dump() for agent in agents]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing agents: {e}")
 
     @staticmethod
     async def _workflow_draft(user_id: str, match: str):
@@ -112,7 +96,8 @@ class Server:
             workflows = workflow_cache.list_workflows(user_id, match)
             return workflows[0]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing workflows: {e}")
+        
     @staticmethod
     async def _list_workflow_json(user_id: str, match: Optional[str] = None):
         try:
@@ -131,19 +116,21 @@ class Server:
                 })
             return [workflowJson for workflowJson in workflowJsons]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing workflows: {e}")
+        
     @staticmethod
     def _list_workflow(
          request: "listAgentRequest"
     ) -> AsyncGenerator[str, None]:
         if workflow_cache is None:
-             raise HTTPException(status_code=503, detail="Service not ready, WorkflowCache not initialized.")
+             logger.error("Workflow cache not initialized.")
+             raise Exception("Workflow cache not initialized.")
         try:
             workflows = workflow_cache.list_workflows(request.user_id, request.match)
             return workflows
         except Exception as e:
             logger.error(f"Error listing workflows: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing workflows: {e}")
 
     @staticmethod
     async def _list_user_all_agents(user_id: str):
@@ -151,19 +138,21 @@ class Server:
             agents = agent_manager._list_user_all_agents(user_id)
             return [agent.model_dump() for agent in agents]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing user all agents: {e}")
+        
     @staticmethod
     async def _list_default_agents_json():
         try:
             agents = agent_manager._list_default_agents()
             return [agent.model_dump() for agent in agents]
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing default agents: {e}")
+        
     @staticmethod
     async def _edit_workflow(user_id: str, workflow):
         try:
             nodes = workflow["nodes"]
-            for key, node in nodes.items():
+            for _, node in nodes.items():
                 if node["component_type"] == "agent" and node["config"]["type"] == "execution_agent":
                     if "add" in node and node["add"] == "1":
                         agent_name = node["name"]
@@ -216,38 +205,41 @@ class Server:
                         workflow_cache.save_workflow(user_id, workflow)
             return workflow
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error editing workflow: {e}")
 
     @staticmethod
     async def _list_default_agents() -> AsyncGenerator[str, None]:
         if agent_manager is None:
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
+             logger.error("Agent workflow called before AgentManager was initialized.")
+             raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
             agents = await agent_manager._list_default_agents()
             for agent in agents:
                 yield agent.model_dump_json() + "\n"
         except Exception as e:
             logger.error(f"Error listing default agents: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing default agents: {e}")
 
     @staticmethod
     async def _list_default_tools() -> AsyncGenerator[str, None]:
         if agent_manager is None:
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
+             logger.error("Agent workflow called before AgentManager was initialized.")
+             raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
             tools = await agent_manager._list_default_tools()
             for tool in tools:
                 yield tool.model_dump_json() + "\n"
         except Exception as e:
             logger.error(f"Error listing default tools: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise Exception(f"Error listing default tools: {e}")
 
     @staticmethod
     async def _edit_agent(
         request: "Agent"
     ) -> AsyncGenerator[str, None]:
         if agent_manager is None:
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
+             logger.error("Agent workflow called before AgentManager was initialized.")
+             raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
             result = agent_manager._edit_agent(request)
             yield json.dumps({"result": result}) + "\n"
@@ -263,7 +255,8 @@ class Server:
         request: "EditStepsRequest"
     ) -> AsyncGenerator[str, None]:
         if agent_manager is None:
-             raise HTTPException(status_code=503, detail="Service not ready, AgentManager not initialized.")
+             logger.error("Agent workflow called before AgentManager was initialized.")
+             raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
             workflow_cache.save_planning_steps(request.workflow_id,request.planning_steps)
             yield json.dumps({"result": "success"}) + "\n"
@@ -323,203 +316,4 @@ class Server:
             return result
         except Exception as e:
             logger.error(f"Error getting active tools for user {user_id}: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
-
-    def launch(self):
-        uvicorn.run(
-            "app:app",
-            host=self.host,
-            port=self.port,
-            workers=1
-        )
-
-
-@app.post("/v1/save_workflow", status_code=status.HTTP_200_OK)
-async def save_workflow_endpoint(request: WorkflowRequest):
-    try:
-        workflow = json.loads(request.data)
-        await Server._edit_workflow(request.user_id, workflow)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON string")
-    except Exception as e:
-        logger.error(f"Error saving workflow: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/v1/workflow", status_code=status.HTTP_200_OK)
-async def agent_workflow_endpoint(request: AgentRequest):
-    async def response_generator():
-        async for chunk in Server._run_agent_workflow(request):
-            yield json.dumps(chunk, ensure_ascii=False) + "\n"
-
-    return StreamingResponse(
-        response_generator(),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.get("/v1/list_workflow_json", status_code=status.HTTP_200_OK)
-async def list_workflow_json(user_id: str, match: Optional[str] = None):
-    try:
-        workflows = await Server._list_workflow_json(user_id, match)
-        return workflows
-    except HTTPException as e:
-        raise e
-
-
-@app.get("/v1/workflow_draft", status_code=status.HTTP_200_OK)
-async def workflow_draft(user_id: str, match: str):
-    try:
-        workflow = await Server._workflow_draft(user_id, match)
-        return workflow
-    except HTTPException as e:
-        raise e
-
-
-@app.post("/v1/list_agents", status_code=status.HTTP_200_OK)
-async def list_agents_endpoint(request: listAgentRequest):
-    return StreamingResponse(
-        Server._list_agents(request),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.get("/get_image/{image_name}")
-async def get_image(image_name: str):
-    root_dir = os.getcwd()  # Get current working directory, which is the root directory
-    image_path = os.path.join(root_dir, image_name)
-
-    if not os.path.isfile(image_path):
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    return FileResponse(image_path)
-
-
-@app.get("/v1/list_agents_json", status_code=status.HTTP_200_OK)
-async def list_agents_json(user_id: str, match: Optional[str] = None):
-    try:
-        agents = await Server._list_agents_json(user_id, match)
-        return agents
-    except HTTPException as e:
-        raise e
-
-
-@app.get("/v1/list_user_all_agents", status_code=status.HTTP_200_OK)
-async def list_user_all_agents(user_id: str):
-    try:
-        agents = await Server._list_user_all_agents(user_id)
-        return agents
-    except HTTPException as e:
-        raise e
-
-
-@app.get("/v1/list_default_agents", status_code=status.HTTP_200_OK)
-async def list_default_agents_endpoint():
-    return StreamingResponse(
-        Server._list_default_agents(),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.get("/v1/list_default_agents_json", status_code=status.HTTP_200_OK)
-async def list_default_agents_json():
-    try:
-        agents = await Server._list_default_agents_json()
-        return agents
-    except HTTPException as e:
-        raise e
-
-
-@app.get("/v1/list_default_tools", status_code=status.HTTP_200_OK)
-async def list_default_tools_endpoint():
-    return StreamingResponse(
-        Server._list_default_tools(),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.post("/v1/edit_agent", status_code=status.HTTP_200_OK)
-async def edit_agent_endpoint(request: Agent):
-    return StreamingResponse(
-        Server._edit_agent(request),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.post("/v1/edit_planning_steps", status_code=status.HTTP_200_OK)
-async def edit_planning_steps_endpoint(request: EditStepsRequest):
-    return StreamingResponse(
-        Server._edit_planning_steps(request),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.post("/v1/remove_agent", status_code=status.HTTP_200_OK)
-async def remove_agent_endpoint(request: RemoveAgentRequest):
-    return StreamingResponse(
-        Server._remove_agent(request),
-        media_type="application/x-ndjson"
-    )
-
-
-@app.get("/v1/browser_container/{user_id}", status_code=status.HTTP_200_OK)
-async def get_browser_container_info(user_id: str):
-    """Get user's browser container information"""
-    try:
-        container_info = await Server._get_browser_container_info(user_id)
-        return container_info
-    except HTTPException as e:
-        raise e
-
-
-@app.get("/v1/active_tools/{user_id}", status_code=status.HTTP_200_OK)
-async def get_active_tools(user_id: str):
-    """Get tools currently being used by the user"""
-    try:
-        active_tools_info = await Server._get_active_tools(user_id)
-        return active_tools_info
-    except HTTPException as e:
-        raise e
-
-
-@app.websocket("/ws/tools/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    """WebSocket endpoint for real-time tool usage notifications"""
-    await websocket_manager.connect(websocket, user_id)
-
-    try:
-        # Keep connection alive
-        while True:
-            try:
-                # Wait for client messages (heartbeat, etc.)
-                data = await websocket.receive_text()
-                # Simply ignore client messages, just keep connection alive
-            except WebSocketDisconnect:
-                break
-            except Exception as e:
-                logger.error(f"Error handling WebSocket message: {e}")
-                break
-
-    except WebSocketDisconnect:
-        pass
-    except Exception as e:
-        logger.error(f"WebSocket connection error: {e}")
-    finally:
-        await websocket_manager.disconnect(websocket, user_id)
-
-
-def parse_arguments():
-    import argparse
-    parser = argparse.ArgumentParser(description="Agent Server API")
-    parser.add_argument("--host", default="0.0.0.0", type=str, help="Service host")
-    parser.add_argument("--port", default=8001, type=int, help="Service port")
-    
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-
-    args = parse_arguments()
-
-    server = Server(host=args.host, port=args.port)
-    server.launch()
+            raise Exception(f"Error getting active tools for user {user_id}: {e}")

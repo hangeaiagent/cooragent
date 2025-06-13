@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 from src.interface.agent import *
-from src.service.app import Server
+from src.service.server import Server
 
 if platform.system() == "Windows":
     import collections
