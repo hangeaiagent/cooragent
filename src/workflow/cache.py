@@ -56,8 +56,6 @@ class WorkflowCache:
 
     def init_cache(self, user_id: str, lap: int, mode: str, workflow_id: str, version: int, user_input_messages: list, deep_thinking_mode: bool, search_before_planning: bool, coor_agents: list[str], load_user_workflow: bool = True):
         try:
-            if user_id not in self._lock_pool:
-                self._lock_pool[user_id] = threading.Lock()
             self._load_workflow(user_id)
             with self._lock_pool[user_id]:
                 if mode == "launch":
