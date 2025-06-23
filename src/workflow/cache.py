@@ -42,9 +42,12 @@ class WorkflowCache:
             with self._lock_pool[user_id]:
                 user_workflow_dir = self.workflow_dir / user_id
                 if not user_workflow_dir.exists():
+                    # only create user workflow dir
                     logger.info(f"path {user_workflow_dir} does not exist when user {user_id} workflow cache initializing, gona to create...")
                     user_workflow_dir.mkdir(parents=True, exist_ok=True)
+                    return
 
+                # user workflow dir exists, then load workflow
                 user_workflow_files = user_workflow_dir.glob("*.json")
                 for workflow_file in user_workflow_files:
                     with open(workflow_file, "r", encoding='utf-8') as f:
