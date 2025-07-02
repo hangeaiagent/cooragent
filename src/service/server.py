@@ -76,7 +76,7 @@ class Server:
              logger.error("Agent workflow called before AgentManager was initialized.")
              raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
-            agents = await agent_manager._list_agents(request.user_id, request.match)
+            agents:List[Agent] = await agent_manager._list_agents(request.user_id, request.match)
             for agent in agents:
                 yield agent.model_dump_json() + "\n"
         except Exception as e:
@@ -86,7 +86,7 @@ class Server:
     @staticmethod
     async def _list_agents_json(user_id: str, match: Optional[str] = None):
         try:
-            agents = await agent_manager._list_agents(user_id, match)
+            agents: List[Agent] = await agent_manager._list_agents(user_id, match)
             return [agent.model_dump() for agent in agents]
         except Exception as e:
             raise Exception(f"Error listing agents: {e}")
@@ -179,7 +179,7 @@ class Server:
                             selected_tools=_tools,
                             prompt=node["config"]["prompt"]
                         )
-                        agent_manager._save_agent(agent, flush=True)
+                        await agent_manager._save_agent(agent, flush=True)
                         for graph in workflow["graph"]:
                             if graph["component_type"] == "agent" and graph["config"]["node_type"] == "execution_agent":
                                 if graph["name"] == node["name"]:
@@ -242,7 +242,7 @@ class Server:
              logger.error("Agent workflow called before AgentManager was initialized.")
              raise Exception("Agent workflow called before AgentManager was initialized.")
         try:
-            result = agent_manager._edit_agent(request)
+            result = await agent_manager._edit_agent(request)
             yield json.dumps({"result": result}) + "\n"
         except NotFoundAgentError as e:
             logger.warning(f"Edit agent failed: {e}")

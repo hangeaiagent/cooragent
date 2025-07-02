@@ -22,15 +22,14 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
     """Node for the create agent agent that creates a new agent."""
     logger.info("Agent Factory Start to work \n")
     messages = apply_prompt_template("agent_factory", state)
-    response = (
+    response = await (
         get_llm_by_type(AGENT_LLM_MAP["agent_factory"])
         .with_structured_output(AgentBuilder)
-        .invoke(messages)
+        .ainvoke(messages)
     )
     
     tools = [agent_manager.available_tools[tool["name"]] for tool in response["selected_tools"]]
-
-    agent_manager._create_agent_by_prebuilt(
+    await agent_manager._create_agent_by_prebuilt(
         user_id=state["user_id"],
         name=response["agent_name"],
         nick_name=response["agent_name"],
@@ -86,7 +85,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
     if state.get("deep_thinking_mode"):
         llm = get_llm_by_type("reasoning")
     if state.get("search_before_planning"):
-        searched_content = tavily_tool.invoke({"query": state["messages"][-1]["content"]})
+        searched_content = await tavily_tool.ainvoke({"query": state["messages"][-1]["content"]})
         messages = deepcopy(messages)
         messages[-1]["content"] += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
     
