@@ -1,7 +1,13 @@
+import re
+import logging
 import asyncio
-from langgraph.prebuilt import create_react_agent
-from src.interface.mcp import Tool
-from src.prompts import apply_prompt_template, get_prompt_template
+from pathlib import Path
+
+import aiofiles
+import aiofiles.os
+
+from langchain_core.tools import tool
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from src.tools import (
     bash_tool,
@@ -11,16 +17,12 @@ from src.tools import (
     tavily_tool,
 )
 
-from src.llm.llm import get_llm_by_type
 from src.llm.agents import AGENT_LLM_MAP
-from langchain_core.tools import tool
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from pathlib import Path
+from src.interface.mcp import Tool
+from src.prompts import get_prompt_template
 from src.interface.agent import Agent
 from src.service.env import USR_AGENT, USE_BROWSER,USE_MCP_TOOLS
 from src.manager.mcp import mcp_client_config
-import logging
-import re
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -55,8 +57,8 @@ class AgentManager:
         await self.load_tools()
         logger.info(f"AgentManager initialized. {len(self.available_agents)} agents and {len(self.available_tools)} tools available.")
 
-    def _create_agent_by_prebuilt(self, user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):
-        def _create(user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):
+    async def _create_agent_by_prebuilt(self, user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):
+        async def _create(user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):
             _tools = []
             for tool in tools:
                 _tools.append(Tool(
@@ -74,13 +76,11 @@ class AgentManager:
                 prompt=str(prompt)
             )
         
-            self._save_agent(_agent)
+            await self._save_agent(_agent)
             return _agent
         
-        _agent = _create(user_id, name, nick_name, llm_type, tools, prompt, description)
+        _agent = await _create(user_id, name, nick_name, llm_type, tools, prompt, description)
         self.available_agents[name] = _agent
-        return
-
 
     async def load_mcp_tools(self):
         mcp_client = MultiServerMCPClient(mcp_client_config())
@@ -100,129 +100,134 @@ class AgentManager:
             del self.available_tools[browser_tool.name]    
         if USE_MCP_TOOLS:
             await self.load_mcp_tools()
+        
+    async def _write_file(self, path: Path, content: str):
+        async with aiofiles.open(path, "w") as f:
+            await f.write(content)
 
-    def _save_agent(self, agent: Agent, flush=False):
+    async def _save_agent(self, agent: Agent, flush=False):
         agent_path = self.agents_dir / f"{agent.agent_name}.json"
         agent_prompt_path = self.prompt_dir / f"{agent.agent_name}.md"
-        if not flush and agent_path.exists():
+        agents = []
+
+        if flush and not agent_path.exists():
+            agents.append((agent_path, agent.model_dump_json()))
+
+        if flush and not agent_prompt_path.exists():
+            agents.append((agent_prompt_path, agent.prompt))
+
+        if not agents:
+            logger.debug(f"skip saving agent")
             return
-        with open(agent_path, "w") as f:
-            f.write(agent.model_dump_json())
-        with open(agent_prompt_path, "w") as f:
-            f.write(agent.prompt)
+
+        agent_tasks = [self._write_file(path, content) for path, content in agents]
+        await asyncio.gather(*agent_tasks)
 
         logger.info(f"agent {agent.agent_name} saved.")
         
-    def _remove_agent(self, agent_name: str):
+    async def _remove_agent(self, agent_name: str):
         agent_path = self.agents_dir / f"{agent_name}.json"
         agent_prompt_path = self.prompt_dir / f"{agent_name}.md"
 
-        try:
-            agent_path.unlink(missing_ok=True)  # delete json file
+        if agent_path.exists():
+            await aiofiles.os.remove(agent_path)
             logger.info(f"Removed agent definition file: {agent_path}")
-        except Exception as e:
-            logger.error(f"Error removing agent definition file {agent_path}: {e}")
-
-        try:
-            agent_prompt_path.unlink(missing_ok=True) 
+        if agent_prompt_path.exists():
+            await aiofiles.os.remove(agent_prompt_path)
             logger.info(f"Removed agent prompt file: {agent_prompt_path}")
-        except Exception as e:
-            logger.error(f"Error removing agent prompt file {agent_prompt_path}: {e}")
-
-        try:
-            if agent_name in self.available_agents:
-                del self.available_agents[agent_name] 
-                logger.info(f"Removed agent '{agent_name}' from available agents.")
-        except Exception as e:
-             logger.error(f"Error removing agent '{agent_name}' from available_agents dictionary: {e}")
+        if agent_name in self.available_agents:
+            del self.available_agents[agent_name] 
+            logger.info(f"Removed agent '{agent_name}' from available agents.")
     
     async def _load_agent(self, agent_name: str, user_agent_flag: bool=False):
         agent_path = self.agents_dir / f"{agent_name}.json"
+
         if not agent_path.exists():
             raise FileNotFoundError(f"agent {agent_name} not found.")
-        with open(agent_path, "r") as f:
-            json_str = f.read()
+
+        async with aiofiles.open(agent_path, "r") as f:
+            json_str = await f.read()
             _agent = Agent.model_validate_json(json_str)
             if _agent.user_id == 'share':
                 self.available_agents[_agent.agent_name] = _agent
             elif user_agent_flag:
                 self.available_agents[_agent.agent_name] = _agent
-
-            return
         
     async def _list_agents(self, user_id: str = None, match: str = None):
         agents = [agent for agent in self.available_agents.values()]
+
         if user_id:
             agents = [agent for agent in agents if agent.user_id == user_id]
         if match:
             agents = [agent for agent in agents if re.match(match, agent.agent_name)]
+
         return agents
 
-    def _edit_agent(self, agent: Agent):
-        try:
-            _agent = self.available_agents[agent.agent_name]
-            _agent.nick_name = agent.nick_name
-            _agent.description = agent.description
-            _agent.selected_tools = agent.selected_tools
-            _agent.prompt = agent.prompt
-            _agent.llm_type = agent.llm_type
-            self._save_agent(_agent, flush=True)
-            return "success"
-        except Exception as e:
+    async def _edit_agent(self, agent: Agent):
+
+        if agent.agent_name not in self.available_agents:
             raise NotFoundAgentError(f"agent {agent.agent_name} not found.")
+
+        _agent = self.available_agents[agent.agent_name]
+        _agent.nick_name = agent.nick_name
+        _agent.description = agent.description
+        _agent.selected_tools = agent.selected_tools
+        _agent.prompt = agent.prompt
+        _agent.llm_type = agent.llm_type
+        await self._save_agent(_agent, flush=True)
+
+        return "success"
     
-    def _save_agents(self, agents: list[Agent], flush=False):
-        for agent in agents:
-            self._save_agent(agent, flush)  
-        return
+    async def _save_agents(self, agents: list[Agent], flush=False):
+        agent_tasks = [self._save_agent(agent, flush) for agent in agents]
+        await asyncio.gather(*agent_tasks)
     
     async def _load_default_agents(self):
-        self._create_agent_by_prebuilt(user_id="share", 
-                                        name="researcher", 
-                                        nick_name="researcher", 
-                                        llm_type=AGENT_LLM_MAP["researcher"], 
-                                        tools=[tavily_tool, crawl_tool], 
-                                        prompt=get_prompt_template("researcher"),
-                                        description="This agent specializes in research tasks by utilizing search engines and web crawling. It can search for information using keywords, crawl specific URLs to extract content, and synthesize findings into comprehensive reports. The agent excels at gathering information from multiple sources, verifying relevance and credibility, and presenting structured conclusions based on collected data."),
+        await self._create_agent_by_prebuilt(
+            user_id="share",
+            name="researcher",
+            nick_name="researcher",
+            llm_type=AGENT_LLM_MAP["researcher"],
+            tools=[tavily_tool, crawl_tool],
+            prompt=get_prompt_template("researcher"),
+            description="This agent specializes in research tasks by utilizing search engines and web crawling. It can search for information using keywords, crawl specific URLs to extract content, and synthesize findings into comprehensive reports. The agent excels at gathering information from multiple sources, verifying relevance and credibility, and presenting structured conclusions based on collected data.")
         
-        self._create_agent_by_prebuilt(user_id="share", 
-                                        name="coder", 
-                                        nick_name="coder", 
-                                        llm_type=AGENT_LLM_MAP["coder"], 
-                                        tools=[python_repl_tool, bash_tool], 
-                                        prompt=get_prompt_template("coder"),
-                                        description="This agent specializes in software engineering tasks using Python and bash scripting. It can analyze requirements, implement efficient solutions, and provide clear documentation. The agent excels at data analysis, algorithm implementation, system resource management, and environment queries. It follows best practices, handles edge cases, and integrates Python with bash when needed for comprehensive problem-solving."),
+        await self._create_agent_by_prebuilt(
+            user_id="share",
+            name="coder",
+            nick_name="coder",
+            llm_type=AGENT_LLM_MAP["coder"],
+            tools=[python_repl_tool, bash_tool],
+            prompt=get_prompt_template("coder"),
+            description="This agent specializes in software engineering tasks using Python and bash scripting. It can analyze requirements, implement efficient solutions, and provide clear documentation. The agent excels at data analysis, algorithm implementation, system resource management, and environment queries. It follows best practices, handles edge cases, and integrates Python with bash when needed for comprehensive problem-solving.")
         
-        
-        self._create_agent_by_prebuilt(user_id="share", 
-                                        name="browser", 
-                                        nick_name="browser", 
-                                        llm_type=AGENT_LLM_MAP["browser"], 
-                                        tools=[browser_tool], 
-                                        prompt=get_prompt_template("browser"), 
-                                        description="This agent specializes in interacting with web browsers. It can navigate to websites, perform actions like clicking, typing, and scrolling, and extract information from web pages. The agent is adept at handling tasks such as searching specific websites, interacting with web elements, and gathering online data. It is capable of operations like logging in, form filling, clicking buttons, and scraping content."),
+        await self._create_agent_by_prebuilt(
+            user_id="share",
+            name="browser",
+            nick_name="browser",
+            llm_type=AGENT_LLM_MAP["browser"],
+            tools=[browser_tool],
+            prompt=get_prompt_template("browser"),
+            description="This agent specializes in interacting with web browsers. It can navigate to websites, perform actions like clicking, typing, and scrolling, and extract information from web pages. The agent is adept at handling tasks such as searching specific websites, interacting with web elements, and gathering online data. It is capable of operations like logging in, form filling, clicking buttons, and scraping content.")
     
-        self._create_agent_by_prebuilt(user_id="share", 
-                                        name="reporter", 
-                                        nick_name="reporter", 
-                                        llm_type=AGENT_LLM_MAP["reporter"], 
-                                        tools=[], 
-                                        prompt=get_prompt_template("reporter"), 
-                                        description="This agent specializes in creating clear, comprehensive reports based solely on provided information and verifiable facts. It presents data objectively, organizes information logically, and highlights key findings using professional language. The agent structures reports with executive summaries, detailed analysis, and actionable conclusions while maintaining strict data integrity and never fabricating information.")
+        await self._create_agent_by_prebuilt(
+            user_id="share",
+            name="reporter",
+            nick_name="reporter",
+            llm_type=AGENT_LLM_MAP["reporter"],
+            tools=[],
+            prompt=get_prompt_template("reporter"),
+            description="This agent specializes in creating clear, comprehensive reports based solely on provided information and verifiable facts. It presents data objectively, organizes information logically, and highlights key findings using professional language. The agent structures reports with executive summaries, detailed analysis, and actionable conclusions while maintaining strict data integrity and never fabricating information.")
 
-                    
     async def _load_agents(self, user_agent_flag):
         await self._load_default_agents()
         load_tasks = []
         for agent_path in self.agents_dir.glob("*.json"):
             agent_name = agent_path.stem
-            if agent_name not in self.available_agents.keys():
+            if agent_name not in self.available_agents:
                 load_tasks.append(self._load_agent(agent_name, user_agent_flag))
-                
         if not USE_BROWSER and "browser" in self.available_agents:
             del self.available_agents["browser"]
-            
-
         if load_tasks:
             results = await asyncio.gather(*load_tasks, return_exceptions=True)
             for i, result in enumerate(results):
@@ -230,17 +235,16 @@ class AgentManager:
                       logger.warning(f"File not found during bulk load for agent: {load_tasks[i]}. Error: {result}")
                  elif isinstance(result, Exception):
                       logger.error(f"Error during bulk load for agent: {load_tasks[i]}. Error: {result}")
-        return   
     
     async def _list_default_tools(self):
         tools = []
-        for tool_name, tool in self.available_tools.items():
+        for tool_name, agent_tool in self.available_tools.items():
             tools.append(Tool(
                 name=tool_name,
-                description=tool.description,
+                description=agent_tool.description,
             ))
         return tools
-    
+
     async def _list_default_agents(self):
         agents = [agent for agent in self.available_agents.values() if agent.user_id == "share"]
         return agents

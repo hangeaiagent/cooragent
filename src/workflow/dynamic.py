@@ -37,7 +37,7 @@ class DynamicWorkflow:
                     asyncio.run(agent_manager._load_agent(node["agent"]["agent_name"], user_agent_flag=True))
                     _agent = agent_manager.available_agents[node["agent"]["agent_name"]]
                 except:
-                    agent_manager._create_agent_by_prebuilt(
+                    await agent_manager._create_agent_by_prebuilt(
                         user_id=node["agent"]["user_id"],
                         name=node["agent"]["agent_name"],
                         nick_name=node["agent"]["agent_name"],

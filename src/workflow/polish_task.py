@@ -7,7 +7,7 @@ from src.llm.llm import get_llm_by_type
 from src.llm.agents import AGENT_LLM_MAP
 from src.prompts.template import apply_prompt_template, apply_polish_template
 from src.tools.search import tavily_tool
-from src.interface.agent import State, Router
+from src.interface.agent import State, PromptBuilder
 from src.interface.serialize_types import AgentBuilder
 from src.manager import agent_manager
 from src.prompts.template import apply_prompt
@@ -39,7 +39,7 @@ async def polish_agent(_agent: Agent, part_to_edit: str, instruction=None, tools
             messages = apply_polish_template(_agent, instruction)
         response = (
             get_llm_by_type(AGENT_LLM_MAP["polisher"])
-            .with_structured_output(Router)
+            .with_structured_output(PromptBuilder)
             .invoke(messages)
         )
         return response

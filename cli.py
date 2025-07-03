@@ -138,7 +138,7 @@ def show_agent_config(config):
         title="Current Configuration",
         border_style="blue"
     ))
-async def edit_agent_option(_agent: Agent,edit_option:list[str], original_config, modified_config, server):
+async def edit_agent_option(_agent: Agent, edit_option:list[str], original_config, modified_config, server: Server):
     all_edit_option = {
         'NickName': 'Modify NickName',
         'Description': 'Modify Description',
@@ -1010,31 +1010,30 @@ async def list_default_tools(ctx):
 @async_command
 async def edit_agent(ctx, agent_name, user_id, interactive):
     """Edit an existing Agent interactively"""
-    server = ctx.obj['server']
+    server: Server = ctx.obj['server']
     stream_print(Panel.fit(f"[highlight]Fetching configuration for {agent_name}...[/highlight]", border_style="cyan"))
-    original_config = None
+    agent: Agent = None
     try:
         async for agent_json in server._list_agents(listAgentRequest(user_id=user_id, match=agent_name)):
-            agent = json.loads(agent_json)
-            if agent.get("agent_name") == agent_name:
-                original_config = agent
-                _agent = Agent.model_validate_json(agent)
+            agent = Agent.model_validate_json(agent_json)
+            if agent.agent_name == agent_name:
                 break
-        if not original_config:
+        if not agent:
             stream_print(f"[danger]Agent not found: {agent_name}[/danger]")
             return
     except Exception as e:
         stream_print(f"[danger]Failed to fetch configuration: {str(e)}[/danger]")
         return
-    
-    show_agent_config(original_config)
 
-    modified_config = original_config.copy()
+    agent_config = agent.model_dump()
+    show_agent_config(agent_config)
+    modified_config = agent_config.copy()
     stop_editing = False
+
     if interactive:
         while not stop_editing:
             edit_option_list = ['NickName', 'Description', 'Tool', 'Prompt']
-            stop_editing = await edit_agent_option(_agent, edit_option_list,original_config,modified_config,server)
+            stop_editing = await edit_agent_option(agent, edit_option_list,agent_config, modified_config,server)
 
 
 @cli.command(name="run-o")
@@ -1045,7 +1044,7 @@ async def edit_agent(ctx, agent_name, user_id, interactive):
 @async_command
 async def run_polish(ctx, user_id, match, interactive):
     """Edit an existing Workflow interactively"""
-    server = ctx.obj['server']
+    server: Server = ctx.obj['server']
     
     with Progress(
         SpinnerColumn(),

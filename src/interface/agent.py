@@ -132,6 +132,10 @@ class Router(TypedDict):
     """Worker to route to next. If no workers needed, route to FINISH."""
     next: str
 
+class PromptBuilder(TypedDict):
+    prompt: str
+    agent_description: str
+
 
 class State(MessagesState):
     """State for the agent system, extends MessagesState with next field."""

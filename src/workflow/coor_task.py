@@ -39,7 +39,7 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
         
         tools = [agent_manager.available_tools[tool["name"]] for tool in response["selected_tools"]]
 
-        agent_manager._create_agent_by_prebuilt(
+        await agent_manager._create_agent_by_prebuilt(
             user_id=state["user_id"],
             name=response["agent_name"],
             nick_name=response["agent_name"],
@@ -207,7 +207,6 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
         response = await llm.ainvoke(messages)
         content = clean_response_tags(response.content)
 
-    print("Planner response: \n", content)
     goto = "publisher"
 
     # steps need to be stored in cache
