@@ -3,7 +3,7 @@ import json
 from copy import deepcopy
 from langgraph.types import Command
 from typing import Literal
-from src.interface.agent import Component, COORDINATOR, PLANNER, PUBLISHER, AGENT_FACTORY
+from src.interface.agent import COORDINATOR, PLANNER, PUBLISHER, AGENT_FACTORY
 from src.llm.llm import get_llm_by_type
 from src.llm.agents import AGENT_LLM_MAP
 from src.prompts.template import apply_prompt_template
@@ -14,8 +14,6 @@ from src.prompts.template import apply_prompt
 from langgraph.prebuilt import create_react_agent
 from src.workflow.graph import AgentWorkflow
 from src.service.env import MAX_STEPS
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from src.manager.mcp import mcp_client_config
 from src.workflow.cache import workflow_cache as cache
 from src.utils.content_process import clean_response_tags
 from src.interface.serialize_types import AgentBuilder
@@ -33,7 +31,7 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
         messages = apply_prompt_template("agent_factory", state)
         response = (
             get_llm_by_type(AGENT_LLM_MAP["agent_factory"])
-            .with_structured_output(Router)
+            .with_structured_output(AgentBuilder)
             .invoke(messages)
         )
         
