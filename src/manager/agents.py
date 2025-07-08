@@ -76,7 +76,7 @@ class AgentManager:
                 prompt=str(prompt)
             )
         
-            await self._save_agent(_agent)
+            await self._save_agent(_agent, flush=True)
             return _agent
         
         _agent = await _create(user_id, name, nick_name, llm_type, tools, prompt, description)
@@ -111,7 +111,7 @@ class AgentManager:
         agents = []
 
         if flush and not agent_path.exists():
-            agents.append((agent_path, agent.model_dump_json()))
+            agents.append((agent_path, agent.model_dump_json(indent=4)))
 
         if flush and not agent_prompt_path.exists():
             agents.append((agent_prompt_path, agent.prompt))

@@ -198,7 +198,10 @@ async def _process_workflow(
                         state[key] = value
                     
                     if key == "messages" and isinstance(value, list) and value:
-                        state["messages"] += value
+                        # State ignores coordinator messages, which not only lacks contextual benefits 
+                        # but may also cause other unpredictable effects. 
+                        if agent_name != "coordinator":
+                            state["messages"] += value
                         last_message = value[-1]
                         if 'content' in last_message:
                             if agent_name == "coordinator":

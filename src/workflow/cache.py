@@ -229,6 +229,7 @@ class WorkflowCache:
 
         except Exception as e:
             logger.error(f"Error restore_system_node: {e}")
+
     def restore_node(self, workflow_id: str, node: Union[Agent, str], workflow_initialized: bool, user_id: str):
         # todo: restore_node and restore_system_node can be merged
         try:

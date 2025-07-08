@@ -3,7 +3,7 @@ import json
 from copy import deepcopy
 from langgraph.types import Command
 from typing import Literal
-from src.interface.agent import Component, COORDINATOR, PLANNER, PUBLISHER, AGENT_FACTORY
+from src.interface.agent import COORDINATOR, PLANNER, PUBLISHER, AGENT_FACTORY
 from src.llm.llm import get_llm_by_type
 from src.llm.agents import AGENT_LLM_MAP
 from src.prompts.template import apply_prompt_template
@@ -14,11 +14,9 @@ from src.prompts.template import apply_prompt
 from langgraph.prebuilt import create_react_agent
 from src.workflow.graph import AgentWorkflow
 from src.service.env import MAX_STEPS
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from src.manager.mcp import mcp_client_config
 from src.workflow.cache import workflow_cache as cache
-from src.interface.agent import WorkMode
 from src.utils.content_process import clean_response_tags
+from src.interface.serialize_types import AgentBuilder
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +31,7 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
         messages = apply_prompt_template("agent_factory", state)
         response = (
             get_llm_by_type(AGENT_LLM_MAP["agent_factory"])
-            .with_structured_output(Router)
+            .with_structured_output(AgentBuilder)
             .invoke(messages)
         )
         
@@ -154,6 +152,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
     """Planner node that generate the full plan."""
     
     logger.info("Planner generating full plan in {} mode\n".format(state["work_mode"]))
+    content = ""
 
     if state["work_mode"] == "launch":
         messages = apply_prompt_template("planner", state)
@@ -171,7 +170,6 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
             messages[-1]["content"] += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
         cache.restore_system_node(state["workflow_id"], PLANNER, state["user_id"])
         response = llm.stream(messages)
-        content = ''
         for chunk in response:
             if chunk.content:
                 content += chunk.content
@@ -233,7 +231,8 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking. \n")
     messages = apply_prompt_template("coordinator", state)
-    response = get_llm_by_type(AGENT_LLM_MAP["coordinator"]).invoke(messages)
+    response = await get_llm_by_type(AGENT_LLM_MAP["coordinator"]).ainvoke(messages)
+    
     if state["work_mode"] == "launch":
         cache.restore_system_node(state["workflow_id"], COORDINATOR, state["user_id"])
 
