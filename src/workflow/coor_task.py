@@ -150,9 +150,10 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher","__end__
 
 async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]:
     """Planner node that generate the full plan."""
-    
     logger.info("Planner generating full plan in {} mode\n".format(state["work_mode"]))
+
     content = ""
+    goto = "publisher"
 
     if state["work_mode"] == "launch":
         messages = apply_prompt_template("planner", state)
@@ -203,9 +204,9 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
             messages[-1]["content"] += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
 
         response = await llm.ainvoke(messages)
-        content = clean_response_tags(response.content)
-
-    goto = "publisher"
+        content = response.content
+        if isinstance(content, str):
+            content = clean_response_tags(content)
 
     # steps need to be stored in cache
     if state["work_mode"] in ["launch", "polish"]:
@@ -230,25 +231,29 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
 async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking. \n")
-    messages = apply_prompt_template("coordinator", state)
-    response = await get_llm_by_type(AGENT_LLM_MAP["coordinator"]).ainvoke(messages)
-    
-    if state["work_mode"] == "launch":
-        cache.restore_system_node(state["workflow_id"], COORDINATOR, state["user_id"])
 
     goto = "__end__"
-    if "handover_to_planner" in response.content:
+    content = ""
+    messages = apply_prompt_template("coordinator", state)
+    response = await get_llm_by_type(AGENT_LLM_MAP["coordinator"]).ainvoke(messages)
+    if state["work_mode"] == "launch":
+        cache.restore_system_node(state["workflow_id"], COORDINATOR, state["user_id"])
+    
+    content = response.content
+    if isinstance(content, str):
+        content = clean_response_tags(content)
+
+    if "handover_to_planner" in content:
         goto = "planner"
     if state["work_mode"] == "launch":
             cache.restore_system_node(state["workflow_id"], "planner", state["user_id"])
     return Command(
         update={
-            "messages": [{"content":response.content, "tool":"coordinator", "role":"assistant"}],
+            "messages": [{"content":content, "tool":"coordinator", "role":"assistant"}],
             "agent_name": "coordinator",
         },
         goto=goto,
     )
-
 
 
 def build_graph():

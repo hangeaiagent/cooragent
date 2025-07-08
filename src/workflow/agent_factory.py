@@ -80,6 +80,10 @@ async def publisher_node(state: State) -> Command[Literal["agent_factory", "agen
 async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]:
     """Planner node that generate the full plan."""
     logger.info("Planner generating full plan \n")
+
+    goto = "publisher"
+    content = ""
+
     messages = apply_prompt_template("planner", state)
     llm = get_llm_by_type(AGENT_LLM_MAP["planner"])
     if state.get("deep_thinking_mode"):
@@ -89,14 +93,18 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
         messages = deepcopy(messages)
         messages[-1]["content"] += f"\n\n# Relative Search Results\n\n{json.dumps([{'titile': elem['title'], 'content': elem['content']} for elem in searched_content], ensure_ascii=False)}"
     
-    response = await llm.ainvoke(messages)
-    content = clean_response_tags(response.content)
-
-    goto = "publisher"
     try:
-        json.loads(content)
+        response = await llm.ainvoke(messages)
+        content = response.content
+        if isinstance(content, str):
+            content = clean_response_tags(content)
+            json.loads(content)
     except json.JSONDecodeError:
         logger.warning("Planner response is not a valid JSON")
+        goto = "__end__"
+    except Exception as e:
+        logger.error(f"Error in planner node: {e}")
+        content = f"Error in planner node: {e}"
         goto = "__end__"
 
     return Command(
@@ -114,13 +122,17 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"
     logger.info("Coordinator talking. \n")
     messages = apply_prompt_template("coordinator", state)
     response = await get_llm_by_type(AGENT_LLM_MAP["coordinator"]).ainvoke(messages)
+
+    content = response.content
+    if isinstance(content, str):
+        content = clean_response_tags(content)
     goto = "__end__"
-    if "handover_to_planner" in response.content:
+    if "handover_to_planner" in content:
         goto = "planner"
         
     return Command(
         update={
-            "messages": [{"content":response.content, "tool":"coordinator", "role":"assistant"}],
+            "messages": [{"content":content, "tool":"coordinator", "role":"assistant"}],
             "agent_name": "coordinator",
         },
         goto=goto,

@@ -546,6 +546,9 @@ async def run_launch(ctx, user_id, task_type, message, debug, deep_thinking, sea
                     console.print("")
                     
             elif event_type == "end_of_agent":
+                # The pipeline needs to be flushed after the agent finishes
+                flush_pending()
+
                 if current_content:
                     console.print(current_content, end="", highlight=False)
                     current_content = ""

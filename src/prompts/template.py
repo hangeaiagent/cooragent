@@ -7,6 +7,7 @@ from langgraph.prebuilt.chat_agent_executor import AgentState
 from src.utils.path_utils import get_project_root
 from langchain_core.messages import HumanMessage
 from src.interface.agent import Agent
+from src.interface.agent import State
 
 
 def get_prompt_template(prompt_name: str) -> str:
@@ -25,7 +26,7 @@ def get_prompt_template(prompt_name: str) -> str:
     return template, variables
 
 
-def apply_prompt_template(prompt_name: str, state: AgentState, template:str=None) -> list:
+def apply_prompt_template(prompt_name: str, state: State, template:str=None) -> list:
     state = copy.deepcopy(state)
     messages = []
     for msg in state["messages"]:
