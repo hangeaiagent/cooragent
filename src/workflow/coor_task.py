@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 async def agent_factory_node(state: State) -> Command[Literal["publisher","__end__"]]:
     """Node for the create agent agent that creates a new agent."""
     logger.info("Agent Factory Start to work in {} workmode \n".format(state["work_mode"]))
+    tools = []
     
     if state["work_mode"] == "launch":
         cache.restore_system_node(state["workflow_id"], AGENT_FACTORY, state["user_id"])
@@ -34,8 +35,11 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
             .with_structured_output(AgentBuilder)
             .invoke(messages)
         )
-        
-        tools = [agent_manager.available_tools[tool["name"]] for tool in response["selected_tools"]]
+        for tool in response["selected_tools"]:
+            if agent_manager.available_tools.get(tool["name"]):
+                tools.append(agent_manager.available_tools[tool["name"]])
+            else:
+                logger.warning(f"Tool {tool['name']} is not available")
 
         await agent_manager._create_agent_by_prebuilt(
             user_id=state["user_id"],

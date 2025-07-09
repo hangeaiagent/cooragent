@@ -21,6 +21,7 @@ RESPONSE_FORMAT = "Response from {}:\n\n<response>\n{}\n</response>\n\n*Please e
 async def agent_factory_node(state: State) -> Command[Literal["publisher","__end__"]]:
     """Node for the create agent agent that creates a new agent."""
     logger.info("Agent Factory Start to work \n")
+    tools = []
     messages = apply_prompt_template("agent_factory", state)
     response = await (
         get_llm_by_type(AGENT_LLM_MAP["agent_factory"])
@@ -28,7 +29,12 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher","__end
         .ainvoke(messages)
     )
     
-    tools = [agent_manager.available_tools[tool["name"]] for tool in response["selected_tools"]]
+    for tool in response["selected_tools"]:
+        if agent_manager.available_tools.get(tool["name"]):
+            tools.append(agent_manager.available_tools[tool["name"]])
+        else:
+            logger.warning(f"Tool {tool['name']} is not available")
+
     await agent_manager._create_agent_by_prebuilt(
         user_id=state["user_id"],
         name=response["agent_name"],
