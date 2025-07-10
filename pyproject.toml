@@ -73,3 +73,53 @@ extend-exclude = '''
 # in the root of the project.
 ^/build/
 '''
+
+[tool.ruff]
+# Allow lines to be as long as 88.
+line-length = 88
+
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    # "I",
+    # flake8-logging-format
+    "G",
+]
+
+ignore = [
+    # star imports
+    "F405", "F403",
+    # lambda expression assignment
+    "E731",
+    # Loop control variable not used within loop body
+    "B007",
+    # f-string format
+    "UP032",
+    # Can remove once 3.10+ is the minimum Python version
+    "UP007",
+]
+
+[tool.mypy]
+plugins = ['pydantic.mypy']
+ignore_missing_imports = true
+check_untyped_defs = true
+follow_imports = "silent"
+
+[tool.isort]
+skip_glob = [
+    "config/*",
+    "src/prompt/*",
+]
+use_parentheses = true
+skip_gitignore = true

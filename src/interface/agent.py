@@ -147,8 +147,8 @@ class State(MessagesState):
     deep_thinking_mode: bool
     search_before_planning: bool
     workflow_id: str
-    workflow_mode: WorkMode="auto"
-    initialized: bool=False
+    workflow_mode: WorkMode
+    initialized: bool
 
 class RemoveAgentRequest(BaseModel):
     user_id: str
