@@ -27,18 +27,18 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher", "__en
     logger.info("Agent Factory Start to work")
 
     tools = []
-
     messages = apply_prompt_template("agent_factory", state)
     agent_spec = await (
         get_llm_by_type(AGENT_LLM_MAP["agent_factory"])
         .with_structured_output(AgentBuilder)
         .ainvoke(messages)
     )
-
+  
     for tool in agent_spec["selected_tools"]:
-        if tool["name"] not in agent_manager.available_tools:
-            continue
-        tools.append(agent_manager.available_tools[tool["name"]])
+        if agent_manager.available_tools.get(tool["name"]):
+            tools.append(agent_manager.available_tools[tool["name"]])
+        else:
+            logger.warning("Tool (%s) is not available", tool["name"])
 
     await agent_manager._create_agent_by_prebuilt(
         user_id=state["user_id"],

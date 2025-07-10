@@ -39,10 +39,11 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher", "__en
         )
 
         for tool in agent_spec["selected_tools"]:
-            if tool["name"] not in agent_manager.available_tools:
-                continue
-            tools.append(agent_manager.available_tools[tool["name"]])
-
+            if agent_manager.available_tools.get(tool["name"]):
+                tools.append(agent_manager.available_tools[tool["name"]])
+            else:
+                logger.warning("Tool (%s) is not available", tool["name"])
+                
         await agent_manager._create_agent_by_prebuilt(
             user_id=state["user_id"],
             name=agent_spec["agent_name"],
