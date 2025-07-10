@@ -19,3 +19,8 @@ store
 .vscode/*
 .DS_Store
 config/mcp.json
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
