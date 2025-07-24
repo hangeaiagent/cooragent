@@ -44,6 +44,11 @@ class GenerationStatus(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     error_details: Optional[str] = None
+    current_step: Optional[str] = None  # 当前执行的步骤
+    total_steps: int = 5  # 总步骤数
+    step_details: Optional[str] = None  # 步骤详细信息
+    agents_created: list[str] = []  # 已创建的智能体
+    tools_selected: list[str] = []  # 已选择的工具
 
 class ExampleResponse(BaseModel):
     examples: list[Dict[str, str]]
@@ -235,33 +240,44 @@ class GeneratorServer:
         """运行代码生成任务"""
         task = self.generation_tasks[task_id]
         
+        # 定义进度更新回调函数
+        async def update_progress(message: str, progress: int, current_step: str, step_details: str):
+            task.message = message
+            task.progress = progress
+            task.current_step = current_step
+            task.step_details = step_details
+            logger.info(f"[{task_id}] {current_step}: {message}")
+        
         try:
             logger.info(f"开始生成项目 {task_id}: {content[:100]}...")
             
-            # 更新状态：开始分析需求
+            # 初始状态
             task.status = "processing"
-            task.message = "正在调用Cooragent工作流分析需求..."
-            task.progress = 10
+            await update_progress("正在初始化代码生成器...", 5, "初始化", "准备Cooragent环境和配置")
             
-            # 调用Cooragent代码生成器
-            zip_path = await self.generator.generate_project(content, user_id)
+            # 调用Cooragent代码生成器，传入进度回调
+            zip_path = await self.generator.generate_project(content, user_id, update_progress)
             
             # 更新状态：生成完成
             task.status = "completed"
-            task.message = "基于Cooragent的项目代码生成完成！"
+            task.message = "🎉 基于Cooragent的多智能体项目生成完成！"
             task.progress = 100
             task.zip_path = str(zip_path)
             task.completed_at = datetime.now()
+            task.current_step = "完成"
+            task.step_details = f"项目已打包为: {zip_path.name if hasattr(zip_path, 'name') else 'project.zip'}"
             
             logger.info(f"项目生成完成 {task_id}: {zip_path}")
             
         except Exception as e:
             # 更新状态：生成失败
             task.status = "failed"
-            task.message = f"生成失败: {str(e)}"
+            task.message = f"❌ 生成失败: {str(e)}"
             task.progress = 0
             task.error_details = str(e)
             task.completed_at = datetime.now()
+            task.current_step = "错误"
+            task.step_details = f"详细错误信息: {str(e)}"
             
             logger.error(f"代码生成失败 {task_id}: {e}", exc_info=True)
     
@@ -673,6 +689,9 @@ class GeneratorServer:
                 // 更新进度条
                 updateProgress(status.progress);
                 
+                // 更新详细状态信息
+                updateDetailedStatus(status);
+                
                 if (status.status === 'completed') {
                     showStatus('completed', 
                         '✅ 基于 Cooragent 的项目代码生成完成！<br>' +
@@ -681,11 +700,11 @@ class GeneratorServer:
                     );
                     resetButton();
                 } else if (status.status === 'failed') {
-                    showStatus('failed', '❌ 生成失败: ' + status.message);
+                    showStatus('failed', '❌ 生成失败: ' + status.message + 
+                        (status.error_details ? '<br><small>' + status.error_details + '</small>' : ''));
                     resetButton();
                 } else {
                     // 更新消息并继续轮询
-                    document.getElementById('statusMessage').innerHTML = status.message;
                     setTimeout(pollStatus, 2000);
                 }
                 
@@ -714,6 +733,60 @@ class GeneratorServer:
         function updateProgress(progress) {
             const progressFill = document.getElementById('progressFill');
             progressFill.style.width = progress + '%';
+        }
+
+        function updateDetailedStatus(status) {
+            const messageEl = document.getElementById('statusMessage');
+            let statusHtml = '';
+            
+            // 主要状态消息
+            statusHtml += `<div style="font-weight: 600; margin-bottom: 10px;">${status.message}</div>`;
+            
+            // 当前步骤信息
+            if (status.current_step) {
+                statusHtml += `<div style="margin-bottom: 8px;">
+                    <span style="color: #667eea; font-weight: 500;">🔄 当前步骤:</span> ${status.current_step}
+                </div>`;
+            }
+            
+            // 步骤详细信息
+            if (status.step_details) {
+                statusHtml += `<div style="margin-bottom: 8px; color: #666; font-size: 0.9em;">
+                    💡 ${status.step_details}
+                </div>`;
+            }
+            
+            // 进度信息
+            statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
+                📊 进度: ${status.progress}% (步骤 ${Math.ceil(status.progress / 20)} / ${status.total_steps})
+            </div>`;
+            
+            // 智能体和工具信息
+            if (status.agents_created && status.agents_created.length > 0) {
+                statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
+                    🤖 已创建智能体: ${status.agents_created.join(', ')}
+                </div>`;
+            }
+            
+            if (status.tools_selected && status.tools_selected.length > 0) {
+                statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
+                    🛠️ 选择的工具: ${status.tools_selected.join(', ')}
+                </div>`;
+            }
+            
+            // 估计剩余时间
+            if (status.status === 'processing' && status.progress > 0) {
+                const elapsed = new Date() - new Date(status.created_at);
+                const estimated = (elapsed / status.progress) * (100 - status.progress);
+                const remainingMinutes = Math.ceil(estimated / 60000);
+                if (remainingMinutes > 0 && remainingMinutes < 10) {
+                    statusHtml += `<div style="color: #888; font-size: 0.8em;">
+                        ⏱️ 预计剩余时间: ${remainingMinutes} 分钟
+                    </div>`;
+                }
+            }
+            
+            messageEl.innerHTML = statusHtml;
         }
         
         function resetButton() {

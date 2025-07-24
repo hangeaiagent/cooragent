@@ -52,13 +52,14 @@ class CooragentProjectGenerator:
             "browser_tool": ["browser.py", "browser_decorators.py"]
         }
     
-    async def generate_project(self, user_input: str, user_id: str = None) -> Path:
+    async def generate_project(self, user_input: str, user_id: str = None, progress_callback=None) -> Path:
         """
         生成基于Cooragent的精简项目
         
         Args:
             user_input: 用户需求描述
             user_id: 用户ID，用于隔离不同用户的智能体
+            progress_callback: 进度更新回调函数
             
         Returns:
             生成的压缩包路径
@@ -68,30 +69,52 @@ class CooragentProjectGenerator:
             
         logger.info(f"开始为用户 {user_id} 生成项目，需求: {user_input[:100]}...")
         
+        if progress_callback:
+            await progress_callback("正在初始化项目生成器...", 5, "初始化", "设置环境和参数")
+        
         try:
             # 1. 调用现有工作流系统获取智能体配置
-            workflow_result = await self._run_workflow(user_input, user_id)
+            if progress_callback:
+                await progress_callback("正在调用Cooragent工作流分析需求...", 15, "需求分析", "使用AI智能体协作分析用户需求")
+            
+            workflow_result = await self._run_workflow(user_input, user_id, progress_callback)
             
             # 2. 分析生成的智能体和工具需求
-            project_config = await self._analyze_project_requirements(workflow_result, user_id)
+            if progress_callback:
+                await progress_callback("正在分析智能体配置和工具需求...", 35, "配置分析", "确定需要的智能体类型和工具组件")
+            
+            project_config = await self._analyze_project_requirements(workflow_result, user_id, progress_callback)
             
             # 3. 复制Cooragent核心代码并定制化
-            project_path = await self._generate_customized_project(project_config, user_id)
+            if progress_callback:
+                await progress_callback("正在生成定制化项目代码...", 60, "代码生成", f"基于{len(project_config['agents'])}个智能体生成项目结构")
+            
+            project_path = await self._generate_customized_project(project_config, user_id, progress_callback)
             
             # 4. 压缩项目
+            if progress_callback:
+                await progress_callback("正在压缩项目文件...", 90, "项目打包", "生成可下载的压缩包")
+            
             zip_path = await self._compress_project(project_path)
+            
+            if progress_callback:
+                await progress_callback("项目生成完成！", 100, "完成", f"已生成基于Cooragent的多智能体应用")
             
             logger.info(f"项目生成完成: {zip_path}")
             return zip_path
             
         except Exception as e:
             logger.error(f"项目生成失败: {e}")
+            if progress_callback:
+                await progress_callback(f"生成失败: {str(e)}", 0, "错误", f"详细错误: {str(e)}")
             raise
         finally:
             # 清理临时生成的智能体
+            if progress_callback:
+                await progress_callback("正在清理临时文件...", 95, "清理", "清理临时生成的智能体配置")
             await self._cleanup_user_agents(user_id)
     
-    async def _run_workflow(self, user_input: str, user_id: str) -> Dict[str, Any]:
+    async def _run_workflow(self, user_input: str, user_id: str, progress_callback=None) -> Dict[str, Any]:
         """调用现有工作流系统分析需求"""
         logger.info("调用Cooragent工作流分析用户需求...")
         
@@ -99,27 +122,73 @@ class CooragentProjectGenerator:
             # 构建消息格式
             messages = [{"role": "user", "content": user_input}]
             
+            if progress_callback:
+                await progress_callback("正在启动Cooragent智能体协作...", 18, "工作流启动", "初始化多智能体协作环境")
+            
             # 使用Launch模式分析用户需求并生成智能体配置
-            result = await run_agent_workflow(
+            # run_agent_workflow 返回异步生成器，需要迭代处理
+            final_result = {}
+            events = []
+            step_count = 0
+            
+            async for event_data in run_agent_workflow(
                 user_id=user_id,
                 task_type=TaskType.AGENT_WORKFLOW,
                 user_input_messages=messages,
                 debug=False,
                 deep_thinking_mode=True,
                 search_before_planning=True,
-                workmode="launch"
-            )
+                workmode="launch",
+                coor_agents=[]  # 添加空列表避免None错误
+            ):
+                events.append(event_data)
+                step_count += 1
+                
+                # 根据事件类型更新进度
+                if event_data.get("event") == "start_of_agent":
+                    agent_name = event_data.get("data", {}).get("agent_name", "unknown")
+                    if progress_callback:
+                        progress = min(20 + step_count * 2, 32)
+                        await progress_callback(f"智能体 {agent_name} 开始执行...", progress, "智能体协作", f"正在执行 {agent_name} 智能体任务")
+                
+                elif event_data.get("event") == "end_of_agent":
+                    agent_name = event_data.get("data", {}).get("agent_name", "unknown")
+                    if progress_callback:
+                        progress = min(22 + step_count * 2, 33)
+                        await progress_callback(f"智能体 {agent_name} 执行完成", progress, "智能体协作", f"{agent_name} 已完成任务并生成结果")
+                
+                # 保存最终状态
+                if event_data.get("event") == "end_of_workflow":
+                    final_result = event_data.get("data", {})
+                    if progress_callback:
+                        await progress_callback("工作流执行完成，正在整理结果...", 34, "结果整理", "多智能体协作完成，正在处理生成结果")
+                elif "data" in event_data and isinstance(event_data["data"], dict):
+                    # 更新最终结果，保留最新的状态信息
+                    final_result.update(event_data["data"])
+            
+            # 如果没有明确的结束事件，使用最后一个事件的数据
+            if not final_result and events:
+                final_result = events[-1].get("data", {})
+            
+            # 确保结果包含消息历史
+            if "messages" not in final_result:
+                final_result["messages"] = messages
             
             logger.info("工作流执行完成")
-            return result
+            return final_result
             
         except Exception as e:
             logger.error(f"工作流执行失败: {e}")
+            if progress_callback:
+                await progress_callback(f"工作流执行失败: {str(e)}", 0, "工作流错误", str(e))
             raise
     
-    async def _analyze_project_requirements(self, workflow_result: Dict[str, Any], user_id: str) -> Dict[str, Any]:
+    async def _analyze_project_requirements(self, workflow_result: Dict[str, Any], user_id: str, progress_callback=None) -> Dict[str, Any]:
         """分析项目需求并确定需要的组件"""
         logger.info("分析项目需求和智能体配置...")
+        
+        if progress_callback:
+            await progress_callback("正在分析生成的智能体配置...", 37, "配置分析", "检查工作流生成的智能体和工具")
         
         # 获取本次工作流创建的智能体
         created_agents = []
@@ -144,6 +213,9 @@ class CooragentProjectGenerator:
                     created_agents.append(agent)
                     for tool in agent.selected_tools:
                         used_tools.add(tool.name)
+        
+        if progress_callback:
+            await progress_callback(f"已识别 {len(created_agents)} 个智能体和 {len(used_tools)} 个工具", 40, "配置分析", f"智能体: {[a.agent_name for a in created_agents]}, 工具: {list(used_tools)}")
         
         # 分析需要的Cooragent组件
         required_components = self._determine_required_components(created_agents, used_tools)
@@ -217,27 +289,45 @@ class CooragentProjectGenerator:
             ]
         }
     
-    async def _generate_customized_project(self, config: Dict[str, Any], user_id: str) -> Path:
+    async def _generate_customized_project(self, config: Dict[str, Any], user_id: str, progress_callback=None) -> Path:
         """生成定制化的Cooragent项目"""
         project_name = f"cooragent_app_{user_id}_{int(time.time())}"
         project_path = self.output_dir / project_name
         
         logger.info(f"生成项目: {project_path}")
         
+        if progress_callback:
+            await progress_callback("正在创建项目目录结构...", 62, "代码生成", f"创建项目: {project_name}")
+        
         # 创建项目目录结构
         await self._create_project_structure(project_path)
+        
+        if progress_callback:
+            await progress_callback("正在复制Cooragent核心组件...", 68, "代码生成", "复制工作流引擎、智能体管理等核心模块")
         
         # 复制并定制化Cooragent核心代码
         await self._copy_cooragent_components(project_path, config["components"])
         
+        if progress_callback:
+            await progress_callback("正在生成配置文件...", 75, "代码生成", "生成环境变量、依赖清单等配置")
+        
         # 生成定制化配置文件
         await self._generate_custom_configs(project_path, config)
+        
+        if progress_callback:
+            await progress_callback("正在生成主应用入口...", 80, "代码生成", "创建基于FastAPI的Web应用入口")
         
         # 生成主应用入口
         await self._generate_main_application(project_path, config)
         
+        if progress_callback:
+            await progress_callback("正在生成部署配置...", 85, "代码生成", "创建Docker配置和启动脚本")
+        
         # 生成部署文件
         await self._generate_deployment_files(project_path, config)
+        
+        if progress_callback:
+            await progress_callback("正在生成项目文档...", 88, "代码生成", "生成详细的使用说明和API文档")
         
         # 生成文档
         await self._generate_project_documentation(project_path, config)
@@ -443,11 +533,13 @@ ANONYMIZED_TELEMETRY=false
         zip_path = project_path.parent / f"{project_path.name}.zip"
         
         def _zip_project():
+            import os
             with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in project_path.rglob('*'):
-                    if root.is_file():
-                        arc_path = root.relative_to(project_path.parent)
-                        zipf.write(root, arc_path)
+                for root, dirs, files in os.walk(project_path):
+                    for file in files:
+                        file_path = Path(root) / file
+                        arc_path = file_path.relative_to(project_path.parent)
+                        zipf.write(file_path, arc_path)
         
         # 在线程池中执行压缩操作
         loop = asyncio.get_event_loop()

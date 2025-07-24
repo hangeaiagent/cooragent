@@ -1,226 +1,150 @@
-# cooragent
+# 旅游智能体 (Travel Agent) 使用说明
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Wechat](https://img.shields.io/badge/WeChat-cooragent-brightgreen?logo=wechat&logoColor=white)](./assets/wechat_community.jpg)
-[![GitHub stars](https://img.shields.io/github/stars/LeapLabTHU/Cooragent?style=social)](https://github.com/LeapLabTHU/Cooragent/stargazers)
+## 概述
+这是一个基于AI的智能旅游规划助手，能够根据用户需求生成个性化的旅行行程，支持自然语言交互和智能推荐。
 
-[English](./README.md) | [简体中文](./README_zh.md)
+## 主要功能
 
-# What is Cooragent
+### 1. 个性化行程规划
+- 根据用户预算、时间、兴趣自动生成最优行程
+- 智能匹配景点、酒店、餐厅
+- 支持多种旅游偏好（文化、美食、观光等）
 
-Cooragent is an AI agent collaboration community. In this community, you can create powerful agents with a single sentence and collaborate with other agents to complete complex tasks. Agents can be freely combined, creating infinite possibilities. At the same time, you can also publish your agents to the community and share them with others.
+### 2. 多模态交互
+- 支持自然语言输入处理
+- 自动解析用户需求和偏好
+- 智能对话式交互体验
 
-# Core Philosophy of Cooragent
-When building and refining agents becomes simple enough, the true AGI era will arrive.
-The core goals of Cooragent are: helping users quickly build agents, quickly build workflows, and quickly refine workflows.
+### 3. 动态行程调整
+- 根据天气情况实时调整行程
+- 支持突发情况的应急处理
+- 灵活修改旅行计划
 
-<h5 align="center">
-<video src="https://github.com/user-attachments/assets/9af611e3-aed6-4a2f-8663-428a7707fe8d" width="70%" alt="introduce cooragent" controls></video>
-</h5>
+### 4. 实时推荐系统
+- 提供热门景点推荐
+- 实时优惠信息推送
+- 本地活动和安全提醒
 
-# Auto-Create Agents, Unlock Infinite Possibilities
-Cooragent has two task modes: **Agent Factory** and **Agent Workflow**.
-- In **Agent Factory** mode, you only need to describe the agent, and Cooragent will generate an agent based on your needs. In Agent Factory mode, the system automatically analyzes user needs, deeply understands the user through memory and expansion, and saves the complicated Prompt design. The Planner will select appropriate tools, automatically polish the Prompt, and gradually complete the agent construction based on a deep understanding of user needs. After the agent is constructed, it can be put into use immediately, but you can still edit the agent to optimize its behavior and functions.
-- In **Agent Workflow** mode, you only need to describe the target task you want to complete, and Cooragent will automatically analyze the task requirements and select suitable agents for collaboration. The Planner combines agents based on their areas of expertise, plans task steps and completion order, and then hands them over to the task distribution node publish to release tasks. Each agent receives its own tasks and collaborates to complete them.
-Cooragent can continuously evolve in both modes, thereby creating infinite possibilities.
+## 使用方法
 
-# Efficiently Build Workflows
-Streamlining workflow construction is crucial for leveraging Agents effectively in production environments. Traditional methods rely heavily on developer expertise, making tool selection, prompt engineering, and architectural decisions time-consuming and labor-intensive. Cooragent introduces an innovative approach with three distinct workflow modes: Launch, Polish, and Production.
+### 基础使用
+```python
+from travel_agent import AdvancedTravelAgent
 
--   **Launch Mode**: Users simply outline their desired task. Cooragent then automatically analyzes requirements, selects appropriate Agents, and constructs a complete workflow. Upon task completion, the workflow is saved locally (typically in `store/workflow`) for future reuse and modification. In the CLI tool, users can start Launch mode using the `run-l` command.
--   **Polish Mode**: This mode offers granular control. Users can manually refine workflow execution order, Agent tool selection, LLM configurations, and associated prompts. Alternatively, natural language commands can direct Cooragent to make specific adjustments. For instance, a user might instruct: "Refine the stock analysis Agent: replace the browser tool with Tavily for faster information retrieval." Cooragent, leveraging frameworks such as [APE](https://arxiv.org/abs/2211.01910) and [Absolute-Zero-Reasoner](https://andrewzh112.github.io/absolute-zero-reasoner/), will then autonomously adjust the Agent's prompts, tools, and other operational parameters. In the CLI tool, users can start Polish mode using the `run-o` command.
--   **Production Mode**: In this mode, Cooragent executes the fine-tuned workflow with maximal efficiency, minimizing operational overhead. A Supervisor module is employed to ensure output reliability and handle exceptions. In the CLI tool, users can start Production mode using the `run-p` command.
+# 创建智能体实例
+agent = AdvancedTravelAgent()
 
-**Best Practices**: 
-- Launch mode is used for automated rapid construction of runnable workflows
-- Polish mode is used for fine-tuning and optimization of workflows
-- Production mode is used for production scenarios, pursuing stable operation
+# 方式1: 自然语言输入
+user_input = "我想去北京旅游3天，预算3000元，喜欢历史文化和美食"
+preferences = agent.process_user_input(user_input)
 
+# 方式2: 直接设置偏好
+agent.set_user_preferences(
+    budget=3000, 
+    days=3, 
+    interests=['culture', 'food'], 
+    destination='北京'
+)
 
-<div align="center" style="display: flex; gap: 20px;">
-    <img src="assets/polish.png" alt="Cooragent polish" />
-</div>
+# 生成行程
+agent.generate_personalized_itinerary()
 
-# Quick Installation
+# 展示行程
+agent.display_itinerary()
 
-1. Installation using conda
-```bash
-git clone https://github.com/LeapLabTHU/cooragent.git
-cd cooragent
-
-conda create -n cooragent python=3.12
-conda activate cooragent
-
-pip install -e .
-
-# Optional: If you need to use the browser tool
-playwright install
-
-# Configure environment
-cp .env.example .env
-# Edit .env file and fill in your API keys
-
-python cli.py
+# 导出行程
+agent.export_itinerary_to_json('my_trip.json')
 ```
 
-2. Installation using venv
-```bash
-git clone https://github.com/LeapLabTHU/cooragent.git
-cd cooragent
+### 高级功能
+```python
+# 天气调整
+agent.adjust_itinerary_for_weather('雨天')
 
-uv python install 3.12
-uv venv --python 3.12
-
-source .venv/bin/activate   # For Windows: .venv\Scripts\activate
-
-uv sync
-
-# Optional: If you need to use the browser tool
-playwright install
-
-# Configure environment
-cp .env.example .env
-# Edit .env file and fill in your API keys
-
-# Run the project
-uv run cli.py 
-```
-**Note**: If running the project's CLI tool on Windows, besides the steps above, you also need to install additional dependencies. For details, please refer to [Windows Platform Support](./docs/QA.md).
-
-## Configuration
-
-Create a `.env` file in the project root directory and configure the following environment variables:
-
-```bash
-# Note: The Browse tool has a long wait time and is disabled by default. It can be enabled by setting: `USE_BROWSER=True`
-cp .env.example .env
+# 获取实时推荐
+recommendations = agent.get_real_time_recommendations()
 ```
 
-# CLI Tools
-Cooragent provides a series of developer tools to help developers quickly build agents. Through the CLI tools, developers can quickly create, edit, and delete agents. The CLI is designed for efficiency and ease of use, significantly reducing the tediousness of manual operations and allowing developers to focus more on the design and optimization of the agents themselves.
+## 支持的目的地
+- 北京：故宫、长城、天坛、颐和园、国家博物馆
+- 上海：外滩、东方明珠、豫园、上海博物馆、田子坊
 
-## Create an Agent with a Single Command using the CLI Tool
-Enter the cooragent command tool interface
-```
-python cli.py
-```
-<p align="center">
-<img src="./assets/cli.png" alt="Cooragent CLI Tool" />
-</p>
+## 配置参数
 
-## Create a Xiaomi stock analysis agent with a single command
-```
-run-l -t agent_workflow -u test -m 'Create a stock analysis expert agent to analyze the Xiaomi stock trend, today is 22 April, 2025, look over the past month, analyze the big news about Xiaomi, then predict the stock price trend for the next trading day, and provide buy or sell recommendations.'
-```
+### 用户偏好设置
+- `budget`: 预算金额（元）
+- `days`: 旅行天数
+- `interests`: 兴趣列表 ['culture', 'food', 'sightseeing']
+- `destination`: 目的地城市
 
-## Polish an Agentic Workflow
-```
-run-o -u <user-id>
-```
+### 兴趣类型
+- `culture`: 文化历史类景点
+- `food`: 美食餐厅
+- `sightseeing`: 观光游览
 
-## Run an Agentic Workflow in Production Mode
-```
-run-p -u <user-id> -w <workflow-id> -m <message>
-```
+## 输出格式
 
-## List Agents
-```
-list-agents -u <user-id> -m <regex>
-```
-
-## Remove an Agent
-```
-remove-agent -n <agent_name> -u <user-id>
-```
-
-## Use a Group of Agents to Collaboratively Complete Complex Tasks
-```
-run-l -t agent_workflow -u test -m 'Use the task planning agent, web crawler agent, code execution agent, browser operation agent, report writing agent, and file operation agent to plan a trip to Yunnan for the May Day holiday in 2025. First, run the web crawler agent to fetch information about Yunnan tourist attractions, use the browser operation agent to browse the attraction information and select the top 10 most worthwhile attractions. Then, plan a 5-day itinerary, use the report writing agent to generate a travel report, and finally use the file operation agent to save the report as a PDF file.'
-```
-
-## Integrate MCP Services (like Claude Desktop)
-
-Enhance your Agents by integrating external services and tools via the Model Context Protocol (MCP). This is similar to how desktop AI assistants like Claude Desktop manage external functionalities.
-
-**Configuration:**
-
-1.  **Locate/Create Config File**:
-    Find or create `config/mcp.json` in your project root.
-
-    ```bash
-    cd ./config
-    cp mcp.json.example mcp.json
-    ```
-
-2.  **Add MCP Services**:
-    Define your MCP services in this JSON file. Each service has a unique key and a configuration object.
-
-    Example (`config/mcp.json`):
-    ```json
+### 行程信息
+```json
+{
+  "destination": "北京",
+  "duration": "3天",
+  "hotel": {
+    "name": "如家快捷酒店",
+    "price_per_night": 200,
+    "rating": 3.8
+  },
+  "daily_plan": [
     {
-        "mcpServers": {
-          "aws-kb-retrieval": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-aws-kb-retrieval"],
-            "env": {
-              "AWS_ACCESS_KEY_ID": "YOUR_ACCESS_KEY_HERE",
-              "AWS_SECRET_ACCESS_KEY": "YOUR_SECRET_ACCESS_KEY_HERE",
-              "AWS_REGION": "YOUR_AWS_REGION_HERE"
-            }
-          },
-          "AMAP": {
-            "url": "https://mcp.amap.com/sse",
-            "env": {
-              "AMAP_MAPS_API_KEY": "AMAP_MAPS_API_KEY"
-            }
-          }
-        }
+      "day": 1,
+      "date": "2024-01-15",
+      "attractions": [{"name": "故宫", "type": "culture", "cost": 60}],
+      "meals": [{"name": "全聚德烤鸭店", "avg_cost": 150}],
+      "transport": ["地铁", "公交"]
     }
-    ```
-
-
-
-**How it Works:**
-
-Once configured, Cooragent registers these MCP services as available tools. Agents can then select and use these tools during task planning and execution, enabling more complex functionalities.
-After configuration of AMAP mcpServers (GaoDe Map) as the example, you may be able to run the case below: 
-```
-Create a navigation agent that focuses on navigation and uses map-related tools to plan the route from Beijing West Railway Station to the Forbidden City.
-```
-
-## Documentation & Support
-- [Frequently Asked Questions (FAQ)](./docs/QA.md)
-- [Business Support Plan](./docs/business_support.md)
-
-
-## Contribution
-
-We welcome contributions of all forms! Whether it's fixing typos, improving documentation, or adding new features, your help will be greatly appreciated. Please check out our [contribution guidelines](CONTRIBUTING.md) to learn how to get started.
-
-## Community Group
-Join our group on wechat and share your experience with other developers!
-
-<div align="center" style="display: flex; gap: 20px;">
-    <img src="assets/wechat_community.jpg" alt="Cooragent group" width="300" />
-</div>
-
-## Citation
-
-Core contributors: Zheng Wang, Shenzhi Wang, Yue Wu, Shiji Song, Gao Huang
-
-```
-@misc{wang2025cooragent,
-  title        = {Cooragent: An AI Agent Collaboration Community},
-  author       = {Zheng Wang, Shenzhi Wang, Yue Wu, Shiji Song, Gao Huang},
-  howpublished = {\url{https://github.com/LeapLabTHU/cooragent}},
-  year         = {2025}
+  ],
+  "estimated_cost": 1830,
+  "generated_time": "2024-01-15 10:30:00"
 }
 ```
 
-## Star History
-![Star History Chart](https://api.star-history.com/svg?repos=LeapLabTHU/cooragent&type=Date)
+## 扩展开发
 
+### 添加新城市
+在 `_initialize_travel_database()` 方法中添加新的城市数据：
 
+```python
+'新城市': {
+    'attractions': [...],
+    'hotels': [...],
+    'restaurants': [...],
+    'transport': {...}
+}
+```
 
-## Acknowledgments
-Special thanks to all the open-source projects and contributors that made cooragent possible. We stand on the shoulders of giants.
+### 自定义推荐算法
+重写 `generate_personalized_itinerary()` 方法以实现更复杂的推荐逻辑。
+
+### 接入外部API
+可以扩展 `get_real_time_recommendations()` 方法接入真实的旅游数据API。
+
+## 技术特点
+- 面向对象设计，易于扩展
+- 支持JSON格式数据导入导出
+- 模块化架构，便于维护
+- 自然语言处理能力
+- 智能决策算法
+
+## 版本信息
+- 版本: 1.0.0
+- 开发语言: Python 3.7+
+- 依赖库: json, random, datetime, re
+
+## 注意事项
+- 当前版本为演示版本，数据为模拟数据
+- 实际部署时需要接入真实的旅游数据源
+- 建议根据具体需求调整推荐算法
+- 支持的城市有限，可根据需要扩展
+
+## 联系方式
+如有问题或建议，请联系开发团队。
