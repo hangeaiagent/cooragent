@@ -19,13 +19,9 @@ import aiofiles
 from src.interface.agent import Agent, TaskType
 from src.manager import agent_manager
 from src.workflow.process import run_agent_workflow
+from src.generator.config_generator import ConfigGenerator
+from src.utils.chinese_names import generate_chinese_log, format_code_generation_log, format_agent_progress_log, get_agent_chinese_name
 from src.utils.path_utils import get_project_root
-from src.utils.chinese_names import (
-    generate_chinese_log, 
-    format_code_generation_log,
-    format_agent_progress_log,
-    get_agent_chinese_name
-)
 
 logger = logging.getLogger(__name__)
 
@@ -668,7 +664,7 @@ ANONYMIZED_TELEMETRY=false
         logger.info(f"项目已压缩: {zip_path}")
         return zip_path
     
-    async def _cleanup_user_agents(self, user_id: str):
+    async def _cleanup_user_agents(self, user_id: str, progress_callback=None):
         """清理临时生成的用户智能体"""
         try:
             agents_to_remove = []
@@ -682,5 +678,27 @@ ANONYMIZED_TELEMETRY=false
             if agents_to_remove:
                 logger.info(f"已清理用户 {user_id} 的 {len(agents_to_remove)} 个临时智能体")
                 
+                # 记录清理完成的中文日志
+                if progress_callback:
+                    cleanup_log = generate_chinese_log(
+                        "cleanup_complete",
+                        f"🧹 已成功清理 {len(agents_to_remove)} 个临时智能体",
+                        user_id=user_id,
+                        cleaned_agents=agents_to_remove,
+                        cleanup_count=len(agents_to_remove)
+                    )
+                    logger.info(f"中文日志: {cleanup_log['data']['message']}")
+                
         except Exception as e:
-            logger.warning(f"清理用户智能体时出错: {e}") 
+            logger.warning(f"清理用户智能体时出错: {e}")
+            
+            # 记录清理错误的中文日志  
+            if progress_callback:
+                cleanup_error_log = generate_chinese_log(
+                    "cleanup_error",
+                    f"⚠️ 清理临时智能体时出现问题: {str(e)}",
+                    user_id=user_id,
+                    error_message=str(e),
+                    error_type=type(e).__name__
+                )
+                logger.warning(f"中文日志: {cleanup_error_log['data']['message']}") 
