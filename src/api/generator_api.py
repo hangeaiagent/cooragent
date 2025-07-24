@@ -369,12 +369,18 @@ class GeneratorServer:
         logger.info(f"中文日志: {task_start_log['data']['message']}")
         
         # 定义进度更新回调函数
-        async def update_progress(message: str, progress: int, current_step: str, step_details: str):
+        async def update_progress(message: str, progress: int, current_step: str, step_details: str, **kwargs):
             # 更新任务状态
             task.message = message
             task.progress = progress
             task.current_step = current_step
             task.step_details = step_details
+            
+            # 处理额外的智能体和工具信息
+            if 'agents_created' in kwargs:
+                task.agents_created = kwargs['agents_created']
+            if 'tools_selected' in kwargs:
+                task.tools_selected = kwargs['tools_selected']
             
             # 记录进度更新日志
             progress_log = generate_chinese_log(
@@ -384,7 +390,8 @@ class GeneratorServer:
                 progress=progress,
                 current_step=current_step,
                 step_details=step_details,
-                progress_message=message
+                progress_message=message,
+                additional_info=kwargs
             )
             logger.info(f"中文日志: {progress_log['data']['message']}")
             logger.info(f"[{task_id[:8]}] {current_step}: {message}")
@@ -423,8 +430,54 @@ class GeneratorServer:
             )
             logger.info(f"中文日志: {generator_call_log['data']['message']}")
             
-            # 调用Cooragent代码生成器，传入进度回调
-            zip_path = await self.generator.generate_project(content, user_id, update_progress)
+            # 创建增强的进度回调，包含更多细节
+            async def enhanced_progress_callback(message: str, progress: int, current_step: str, step_details: str):
+                # 解析步骤详情中的额外信息
+                additional_info = {}
+                
+                # 检测智能体相关信息
+                if "智能体" in step_details and ":" in step_details:
+                    try:
+                        # 尝试提取智能体列表
+                        if "智能体:" in step_details:
+                            agents_part = step_details.split("智能体:")[1].split(",")[0]
+                            if "[" in agents_part and "]" in agents_part:
+                                import ast
+                                agents_list = ast.literal_eval(agents_part.strip())
+                                additional_info['agents_created'] = agents_list
+                    except:
+                        pass
+                
+                # 检测工具相关信息
+                if "工具" in step_details and ":" in step_details:
+                    try:
+                        # 尝试提取工具列表
+                        if "工具:" in step_details:
+                            tools_part = step_details.split("工具:")[1].split(",")[0]
+                            if "[" in tools_part and "]" in tools_part:
+                                import ast
+                                tools_list = ast.literal_eval(tools_part.strip())
+                                additional_info['tools_selected'] = tools_list
+                    except:
+                        pass
+                
+                # 记录详细的步骤进展日志
+                step_progress_log = generate_chinese_log(
+                    "generation_step_progress",
+                    f"🔄 代码生成步骤进展: {current_step}",
+                    task_id=task_id,
+                    step_name=current_step,
+                    progress_percentage=progress,
+                    step_message=message,
+                    step_details=step_details,
+                    additional_context=additional_info
+                )
+                logger.info(f"中文日志: {step_progress_log['data']['message']}")
+                
+                await update_progress(message, progress, current_step, step_details, **additional_info)
+            
+            # 调用Cooragent代码生成器，传入增强的进度回调
+            zip_path = await self.generator.generate_project(content, user_id, enhanced_progress_callback)
             
             # 记录生成成功日志
             success_log = generate_chinese_log(
@@ -433,7 +486,8 @@ class GeneratorServer:
                 task_id=task_id,
                 zip_file_path=str(zip_path),
                 file_size=zip_path.stat().st_size,
-                generation_duration="计算中...",
+                file_size_mb=round(zip_path.stat().st_size / (1024 * 1024), 2),
+                generation_duration=(datetime.now() - task.created_at).total_seconds(),
                 success_timestamp=datetime.now().isoformat()
             )
             logger.info(f"中文日志: {success_log['data']['message']}")
@@ -456,7 +510,9 @@ class GeneratorServer:
                 zip_file=str(zip_path),
                 file_size_mb=round(zip_path.stat().st_size / (1024 * 1024), 2),
                 completion_time=datetime.now().isoformat(),
-                total_duration=(datetime.now() - task.created_at).total_seconds()
+                total_duration=(datetime.now() - task.created_at).total_seconds(),
+                agents_created=task.agents_created,
+                tools_selected=task.tools_selected
             )
             logger.info(f"中文日志: {completion_log['data']['message']}")
             logger.info(f"项目生成完成 {task_id}: {zip_path}")
@@ -472,7 +528,8 @@ class GeneratorServer:
                 error_details=f"任务 {task_id[:8]} 在执行过程中遇到错误",
                 error_timestamp=datetime.now().isoformat(),
                 task_progress=task.progress,
-                current_step=task.current_step or "未知阶段"
+                current_step=task.current_step or "未知阶段",
+                execution_duration=(datetime.now() - task.created_at).total_seconds()
             )
             logger.error(f"中文日志: {error_log['data']['message']}")
             
@@ -956,50 +1013,86 @@ class GeneratorServer:
             let statusHtml = '';
             
             // 主要状态消息
-            statusHtml += `<div style="font-weight: 600; margin-bottom: 10px;">${status.message}</div>`;
+            statusHtml += `<div style="font-weight: 600; margin-bottom: 12px; padding: 8px; background: #f8f9fa; border-radius: 6px;">${status.message}</div>`;
             
             // 当前步骤信息
             if (status.current_step) {
-                statusHtml += `<div style="margin-bottom: 8px;">
-                    <span style="color: #667eea; font-weight: 500;">🔄 当前步骤:</span> ${status.current_step}
+                statusHtml += `<div style="margin-bottom: 10px; padding: 6px; background: #e3f2fd; border-radius: 4px;">
+                    <span style="color: #1976d2; font-weight: 500;">🔄 当前步骤:</span> ${status.current_step}
                 </div>`;
             }
             
             // 步骤详细信息
             if (status.step_details) {
-                statusHtml += `<div style="margin-bottom: 8px; color: #666; font-size: 0.9em;">
+                statusHtml += `<div style="margin-bottom: 10px; padding: 6px; background: #fff3e0; border-radius: 4px; color: #f57c00; font-size: 0.9em;">
                     💡 ${status.step_details}
                 </div>`;
             }
             
             // 进度信息
-            statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
-                📊 进度: ${status.progress}% (步骤 ${Math.ceil(status.progress / 20)} / ${status.total_steps})
+            const currentPhase = Math.ceil(status.progress / 20);
+            const phaseNames = ['初始化', '需求分析', '智能体创建', '代码生成', '项目打包'];
+            const phaseName = phaseNames[currentPhase - 1] || '执行中';
+            
+            statusHtml += `<div style="margin-bottom: 10px; padding: 6px; background: #e8f5e8; border-radius: 4px; color: #2e7d32; font-size: 0.9em;">
+                📊 进度: ${status.progress}% - 阶段 ${currentPhase}/5 (${phaseName})
             </div>`;
             
-            // 智能体和工具信息
+            // 智能体创建信息
             if (status.agents_created && status.agents_created.length > 0) {
-                statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
-                    🤖 已创建智能体: ${status.agents_created.join(', ')}
+                statusHtml += `<div style="margin-bottom: 8px; padding: 6px; background: #f3e5f5; border-radius: 4px;">
+                    <span style="color: #7b1fa2; font-weight: 500;">🤖 已创建智能体:</span>
+                    <div style="margin-top: 4px; font-size: 0.85em;">
+                        ${status.agents_created.map(agent => `<span style="background: #e1bee7; padding: 2px 6px; border-radius: 12px; margin-right: 4px; display: inline-block; margin-bottom: 2px;">${agent}</span>`).join('')}
+                    </div>
                 </div>`;
             }
             
+            // 工具选择信息
             if (status.tools_selected && status.tools_selected.length > 0) {
-                statusHtml += `<div style="margin-bottom: 8px; color: #555; font-size: 0.9em;">
-                    🛠️ 选择的工具: ${status.tools_selected.join(', ')}
+                statusHtml += `<div style="margin-bottom: 8px; padding: 6px; background: #e0f2f1; border-radius: 4px;">
+                    <span style="color: #00695c; font-weight: 500;">🛠️ 集成的工具:</span>
+                    <div style="margin-top: 4px; font-size: 0.85em;">
+                        ${status.tools_selected.map(tool => `<span style="background: #b2dfdb; padding: 2px 6px; border-radius: 12px; margin-right: 4px; display: inline-block; margin-bottom: 2px;">${tool}</span>`).join('')}
+                    </div>
+                </div>`;
+            }
+            
+            // 执行阶段说明
+            const stageDescriptions = {
+                1: '🔧 正在初始化Cooragent环境和多智能体系统',
+                2: '🧠 协调器和规划器正在分析您的需求',
+                3: '🏭 智能体工厂正在创建专业智能体',
+                4: '💻 正在生成完整的项目代码和配置',
+                5: '📦 正在打包项目并准备下载'
+            };
+            
+            if (status.status === 'processing' && stageDescriptions[currentPhase]) {
+                statusHtml += `<div style="margin-bottom: 8px; padding: 6px; background: #fff8e1; border-radius: 4px; color: #f57c00; font-size: 0.85em;">
+                    ${stageDescriptions[currentPhase]}
                 </div>`;
             }
             
             // 估计剩余时间
-            if (status.status === 'processing' && status.progress > 0) {
+            if (status.status === 'processing' && status.progress > 5) {
                 const elapsed = new Date() - new Date(status.created_at);
                 const estimated = (elapsed / status.progress) * (100 - status.progress);
                 const remainingMinutes = Math.ceil(estimated / 60000);
-                if (remainingMinutes > 0 && remainingMinutes < 10) {
-                    statusHtml += `<div style="color: #888; font-size: 0.8em;">
+                if (remainingMinutes > 0 && remainingMinutes < 15) {
+                    statusHtml += `<div style="color: #666; font-size: 0.8em; text-align: center; margin-top: 8px; padding: 4px; background: #fafafa; border-radius: 4px;">
                         ⏱️ 预计剩余时间: ${remainingMinutes} 分钟
                     </div>`;
                 }
+            }
+            
+            // 技术说明
+            if (status.status === 'processing') {
+                statusHtml += `<div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; border-left: 4px solid #667eea;">
+                    <div style="font-size: 0.8em; color: #666; line-height: 1.4;">
+                        <strong>正在运行:</strong> 基于Cooragent三层智能分析架构<br>
+                        <span style="color: #667eea;">协调器</span> → <span style="color: #667eea;">规划器</span> → <span style="color: #667eea;">智能体工厂</span> → <span style="color: #667eea;">代码生成</span>
+                    </div>
+                </div>`;
             }
             
             messageEl.innerHTML = statusHtml;
