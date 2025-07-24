@@ -1,0 +1,26 @@
+AWS KB Retrieval Server running on stdio
+INFO:     Started server process [32229]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+🤖 Cooragent代码生成器
+==========================================
+
+🚀 启动Web服务器...
+📱 Web界面: http://0.0.0.0:8000
+📋 API文档: http://0.0.0.0:8000/docs
+⚡ 健康检查: http://0.0.0.0:8000/health
+
+💡 使用提示:
+  - 在Web界面输入需求，一键生成多智能体应用
+  - 生成的项目基于Cooragent架构，开箱即用
+  - 支持多种工具和智能体类型
+
+按 Ctrl+C 停止服务器
+==========================================
+            
+INFO:     127.0.0.1:64036 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64117 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64157 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64157 - "GET /api/generate/examples HTTP/1.1" 200 OK
