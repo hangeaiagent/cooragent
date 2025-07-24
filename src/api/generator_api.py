@@ -21,6 +21,12 @@ from pydantic import BaseModel
 from src.service.server import Server
 from src.generator.cooragent_generator import CooragentProjectGenerator
 from src.utils.path_utils import get_project_root
+from src.utils.chinese_names import (
+    generate_chinese_log,
+    format_download_log,
+    format_code_generation_log,
+    get_execution_status_chinese
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,21 +111,48 @@ class GeneratorServer:
             
             logger.info(f"收到代码生成请求: {request.content[:100]}...")
             
+            # 添加中文日志记录
+            request_log = generate_chinese_log(
+                "code_generation_request",
+                "📥 接收到新的代码生成请求",
+                task_id=task_id,
+                user_id=user_id,
+                request_content=request.content[:200],
+                request_length=len(request.content),
+                client_timestamp=datetime.now().isoformat()
+            )
+            logger.info(f"中文日志: {request_log['data']['message']}")
+            
             # 启动后台任务
             background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
             
-            # 记录任务状态
-            self.generation_tasks[task_id] = GenerationStatus(
+            # 记录任务状态并添加中文说明
+            task_status = GenerationStatus(
                 task_id=task_id,
                 status="processing",
-                message="正在分析需求并启动Cooragent工作流...",
-                created_at=datetime.now()
+                message="🚀 正在分析需求并启动Cooragent多智能体工作流...",
+                created_at=datetime.now(),
+                current_step="任务初始化",
+                step_details="正在准备Cooragent环境和智能体团队",
+                progress=5
             )
+            self.generation_tasks[task_id] = task_status
+            
+            # 记录任务启动日志
+            task_start_log = generate_chinese_log(
+                "task_started",
+                f"🎯 代码生成任务已启动 [任务ID: {task_id[:8]}]",
+                task_id=task_id,
+                task_status="started",
+                initial_progress=5,
+                estimated_duration="2-5分钟"
+            )
+            logger.info(f"中文日志: {task_start_log['data']['message']}")
             
             return GenerateResponse(
                 task_id=task_id,
                 status="processing",
-                message="代码生成已开始，基于Cooragent架构",
+                message="🤖 代码生成已开始，基于Cooragent多智能体架构进行协作分析",
                 created_at=datetime.now()
             )
         
@@ -134,19 +167,102 @@ class GeneratorServer:
         @self.app.get("/api/generate/{task_id}/download")
         async def download_code(task_id: str):
             """下载生成的代码"""
+            # 记录下载请求日志
+            download_request_log = generate_chinese_log(
+                "download_request",
+                format_download_log("request", {"task_id": task_id}),
+                task_id=task_id,
+                request_timestamp=datetime.now().isoformat(),
+                client_action="code_download"
+            )
+            logger.info(f"中文日志: {download_request_log['data']['message']}")
+            
             if task_id not in self.generation_tasks:
+                # 任务不存在的错误日志
+                error_log = generate_chinese_log(
+                    "download_error",
+                    format_download_log("error", {"task_id": task_id}),
+                    error_type="task_not_found",
+                    error_details=f"任务ID {task_id} 不存在"
+                )
+                logger.warning(f"中文日志: {error_log['data']['message']}")
                 raise HTTPException(status_code=404, detail="任务不存在")
             
             task = self.generation_tasks[task_id]
+            
+            # 验证任务状态
+            validation_log = generate_chinese_log(
+                "download_validation",
+                format_download_log("validation", {
+                    "task_id": task_id,
+                    "status": task.status
+                }),
+                task_status=task.status,
+                validation_stage="status_check"
+            )
+            logger.info(f"中文日志: {validation_log['data']['message']}")
+            
             if task.status != "completed":
+                # 任务未完成的错误日志
+                status_error_log = generate_chinese_log(
+                    "download_error",
+                    f"❌ 下载失败: 代码生成尚未完成 (当前状态: {get_execution_status_chinese(task.status)})",
+                    error_type="generation_incomplete",
+                    current_status=task.status,
+                    task_progress=getattr(task, 'progress', 0)
+                )
+                logger.warning(f"中文日志: {status_error_log['data']['message']}")
                 raise HTTPException(status_code=400, detail="代码还未生成完成")
             
             if not task.zip_path or not Path(task.zip_path).exists():
+                # 文件不存在的错误日志
+                file_error_log = generate_chinese_log(
+                    "download_error",
+                    format_download_log("error", {
+                        "task_id": task_id,
+                        "file_path": task.zip_path or "未知"
+                    }),
+                    error_type="file_not_found",
+                    zip_path=task.zip_path,
+                    file_exists=Path(task.zip_path).exists() if task.zip_path else False
+                )
+                logger.error(f"中文日志: {file_error_log['data']['message']}")
                 raise HTTPException(status_code=404, detail="生成的文件不存在")
+            
+            # 准备下载
+            zip_file_path = Path(task.zip_path)
+            file_size = zip_file_path.stat().st_size
+            file_name = f"cooragent_app_{task_id[:8]}.zip"
+            
+            preparation_log = generate_chinese_log(
+                "download_preparation",
+                format_download_log("preparation", {
+                    "file_name": file_name,
+                    "file_size": file_size,
+                    "task_id": task_id
+                }),
+                file_path=str(zip_file_path),
+                file_size_mb=round(file_size / (1024 * 1024), 2),
+                preparation_complete=True
+            )
+            logger.info(f"中文日志: {preparation_log['data']['message']}")
+            
+            # 开始下载
+            download_start_log = generate_chinese_log(
+                "download_start",
+                format_download_log("start", {
+                    "file_name": file_name,
+                    "file_size": file_size,
+                    "task_id": task_id
+                }),
+                download_initiated=True,
+                client_download_start=datetime.now().isoformat()
+            )
+            logger.info(f"中文日志: {download_start_log['data']['message']}")
             
             return FileResponse(
                 path=task.zip_path,
-                filename=f"cooragent_app_{task_id[:8]}.zip",
+                filename=file_name,
                 media_type="application/zip"
             )
         
@@ -240,23 +356,87 @@ class GeneratorServer:
         """运行代码生成任务"""
         task = self.generation_tasks[task_id]
         
+        # 记录任务开始日志
+        task_start_log = generate_chinese_log(
+            "task_execution_start",
+            f"🎯 开始执行代码生成任务 [任务ID: {task_id[:8]}]",
+            task_id=task_id,
+            user_id=user_id,
+            content_preview=content[:150],
+            content_length=len(content),
+            execution_start_time=datetime.now().isoformat()
+        )
+        logger.info(f"中文日志: {task_start_log['data']['message']}")
+        
         # 定义进度更新回调函数
         async def update_progress(message: str, progress: int, current_step: str, step_details: str):
+            # 更新任务状态
             task.message = message
             task.progress = progress
             task.current_step = current_step
             task.step_details = step_details
-            logger.info(f"[{task_id}] {current_step}: {message}")
+            
+            # 记录进度更新日志
+            progress_log = generate_chinese_log(
+                "task_progress_update",
+                f"📊 任务进度更新: {current_step} ({progress}%)",
+                task_id=task_id,
+                progress=progress,
+                current_step=current_step,
+                step_details=step_details,
+                progress_message=message
+            )
+            logger.info(f"中文日志: {progress_log['data']['message']}")
+            logger.info(f"[{task_id[:8]}] {current_step}: {message}")
         
         try:
             logger.info(f"开始生成项目 {task_id}: {content[:100]}...")
             
             # 初始状态
             task.status = "processing"
-            await update_progress("正在初始化代码生成器...", 5, "初始化", "准备Cooragent环境和配置")
+            
+            # 记录初始化开始日志
+            init_log = generate_chinese_log(
+                "initialization_start", 
+                "🔧 正在初始化Cooragent代码生成环境",
+                task_id=task_id,
+                initialization_stage="environment_setup",
+                generator_type="CooragentProjectGenerator"
+            )
+            logger.info(f"中文日志: {init_log['data']['message']}")
+            
+            await update_progress(
+                "🔧 正在初始化代码生成器...", 
+                5, 
+                "初始化", 
+                "准备Cooragent环境、智能体管理器和配置参数"
+            )
+            
+            # 记录开始调用生成器日志
+            generator_call_log = generate_chinese_log(
+                "generator_invocation",
+                "🚀 调用Cooragent项目生成器，开始多智能体协作流程",
+                task_id=task_id,
+                generator_method="generate_project",
+                user_content=content[:200],
+                user_id=user_id
+            )
+            logger.info(f"中文日志: {generator_call_log['data']['message']}")
             
             # 调用Cooragent代码生成器，传入进度回调
             zip_path = await self.generator.generate_project(content, user_id, update_progress)
+            
+            # 记录生成成功日志
+            success_log = generate_chinese_log(
+                "generation_success",
+                "🎉 多智能体应用代码生成成功！",
+                task_id=task_id,
+                zip_file_path=str(zip_path),
+                file_size=zip_path.stat().st_size,
+                generation_duration="计算中...",
+                success_timestamp=datetime.now().isoformat()
+            )
+            logger.info(f"中文日志: {success_log['data']['message']}")
             
             # 更新状态：生成完成
             task.status = "completed"
@@ -267,9 +447,35 @@ class GeneratorServer:
             task.current_step = "完成"
             task.step_details = f"项目已打包为: {zip_path.name if hasattr(zip_path, 'name') else 'project.zip'}"
             
+            # 记录任务完成日志
+            completion_log = generate_chinese_log(
+                "task_completion",
+                f"✅ 代码生成任务完成 [任务ID: {task_id[:8]}]",
+                task_id=task_id,
+                final_status="completed",
+                zip_file=str(zip_path),
+                file_size_mb=round(zip_path.stat().st_size / (1024 * 1024), 2),
+                completion_time=datetime.now().isoformat(),
+                total_duration=(datetime.now() - task.created_at).total_seconds()
+            )
+            logger.info(f"中文日志: {completion_log['data']['message']}")
             logger.info(f"项目生成完成 {task_id}: {zip_path}")
             
         except Exception as e:
+            # 记录详细错误日志
+            error_log = generate_chinese_log(
+                "generation_error",
+                f"❌ 代码生成任务执行失败: {str(e)}",
+                task_id=task_id,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                error_details=f"任务 {task_id[:8]} 在执行过程中遇到错误",
+                error_timestamp=datetime.now().isoformat(),
+                task_progress=task.progress,
+                current_step=task.current_step or "未知阶段"
+            )
+            logger.error(f"中文日志: {error_log['data']['message']}")
+            
             # 更新状态：生成失败
             task.status = "failed"
             task.message = f"❌ 生成失败: {str(e)}"
@@ -279,6 +485,16 @@ class GeneratorServer:
             task.current_step = "错误"
             task.step_details = f"详细错误信息: {str(e)}"
             
+            # 记录失败处理日志
+            failure_handling_log = generate_chinese_log(
+                "failure_handling",
+                f"🔧 正在处理任务失败情况 [任务ID: {task_id[:8]}]",
+                task_id=task_id,
+                failure_recovery="error_state_updated",
+                error_preserved=True,
+                user_notification="failure_message_set"
+            )
+            logger.info(f"中文日志: {failure_handling_log['data']['message']}")
             logger.error(f"代码生成失败 {task_id}: {e}", exc_info=True)
     
     def _setup_background_tasks(self):

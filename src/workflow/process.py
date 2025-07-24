@@ -12,6 +12,11 @@ from src.service.env import USE_BROWSER
 from src.workflow.cache import workflow_cache as cache
 from src.workflow.graph import CompiledWorkflow
 from src.interface.agent import WorkMode
+from src.utils.chinese_names import (
+    generate_chinese_log,
+    format_agent_progress_log,
+    get_agent_chinese_name
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -111,6 +116,20 @@ async def run_agent_workflow(
         enable_debug_logging()
 
     logger.info(f"Starting workflow with user input: {user_input_messages}")
+    
+    # 添加工作流启动中文日志
+    workflow_start_log = generate_chinese_log(
+        "workflow_init",
+        "🚀 开始初始化Cooragent多智能体工作流",
+        workflow_id=workflow_id,
+        user_id=user_id,
+        task_type=task_type,
+        user_input=user_input_messages[-1]["content"][:200] if user_input_messages else "",
+        debug_mode=debug,
+        deep_thinking_mode=deep_thinking_mode,
+        search_before_planning=search_before_planning
+    )
+    logger.info(f"中文日志: {workflow_start_log['data']['message']}")
 
     TEAM_MEMBERS_DESCRIPTION_TEMPLATE = """
     - **`{agent_name}`**: {agent_description}
@@ -139,6 +158,17 @@ async def run_agent_workflow(
         TOOLS_DESCRIPTION += "\n" + TOOLS_DESCRIPTION_TEMPLATE.format(
             tool_name=tool_name, tool_description=tool.description
         )
+
+    # 记录团队组建完成日志
+    team_setup_log = generate_chinese_log(
+        "team_setup",
+        f"👥 智能体团队组建完成: {len(TEAM_MEMBERS)}个智能体，{len(agent_manager.available_tools)}个工具",
+        team_members=TEAM_MEMBERS,
+        team_size=len(TEAM_MEMBERS),
+        available_tools_count=len(agent_manager.available_tools),
+        coordinator_agents=coor_agents or []
+    )
+    logger.info(f"中文日志: {team_setup_log['data']['message']}")
 
     global coordinator_cache
     coordinator_cache = []
@@ -172,6 +202,18 @@ async def _process_workflow(
     current_node = None
 
     workflow_id = initial_state["workflow_id"]
+    
+    # 输出工作流开始中文日志
+    workflow_start_log = generate_chinese_log(
+        "workflow_start",
+        "🎯 开始执行多智能体协作工作流",
+        workflow_id=workflow_id,
+        start_node=workflow.start_node,
+        total_team_members=len(initial_state.get("TEAM_MEMBERS", [])),
+        user_query=initial_state.get("USER_QUERY", "")[:150]
+    )
+    logger.info(f"中文日志: {workflow_start_log['data']['message']}")
+    
     yield {
         "event": "start_of_workflow",
         "data": {"workflow_id": workflow_id, "input": initial_state["messages"]},
@@ -180,9 +222,23 @@ async def _process_workflow(
     try:
         current_node = workflow.start_node
         state = State(**initial_state)
+        step_count = 0
 
         while current_node != "__end__":
+            step_count += 1
             agent_name = current_node
+            
+            # 智能体启动中文日志
+            agent_start_log = generate_chinese_log(
+                "agent_start",
+                format_agent_progress_log(agent_name, "start"),
+                agent_name=agent_name,
+                agent_chinese_name=get_agent_chinese_name(agent_name),
+                step_number=step_count,
+                workflow_id=workflow_id,
+                workflow_progress=f"第{step_count}步"
+            )
+            logger.info(f"中文日志: {agent_start_log['data']['message']}")
             logger.info(f"Started node: {agent_name}")
 
             yield {
@@ -233,6 +289,17 @@ async def _process_workflow(
                                     await asyncio.sleep(0.01)
 
                     if agent_name == "agent_factory" and key == "new_agent_name":
+                        # 记录新智能体创建日志
+                        new_agent_log = generate_chinese_log(
+                            "new_agent_created",
+                            f"🎉 成功创建新智能体: {get_agent_chinese_name(value)}",
+                            new_agent_name=value,
+                            new_agent_chinese_name=get_agent_chinese_name(value),
+                            created_by="agent_factory",
+                            workflow_id=workflow_id
+                        )
+                        logger.info(f"中文日志: {new_agent_log['data']['message']}")
+                        
                         yield {
                             "event": "new_agent_created",
                             "agent_name": value,
@@ -241,6 +308,18 @@ async def _process_workflow(
                                 "agent_obj": agent_manager.available_agents[value],
                             },
                         }
+
+            # 智能体完成中文日志
+            agent_complete_log = generate_chinese_log(
+                "agent_complete",
+                format_agent_progress_log(agent_name, "complete"),
+                agent_name=agent_name,
+                agent_chinese_name=get_agent_chinese_name(agent_name),
+                next_node=command.goto,
+                step_completed=step_count,
+                workflow_id=workflow_id
+            )
+            logger.info(f"中文日志: {agent_complete_log['data']['message']}")
 
             yield {
                 "event": "end_of_agent",
@@ -252,6 +331,17 @@ async def _process_workflow(
 
             next_node = command.goto
             current_node = next_node
+
+        # 工作流完成中文日志
+        workflow_complete_log = generate_chinese_log(
+            "workflow_complete",
+            "🎉 多智能体协作工作流执行完成",
+            workflow_id=workflow_id,
+            total_steps=step_count,
+            final_status="成功完成",
+            execution_summary=f"共执行{step_count}个智能体步骤"
+        )
+        logger.info(f"中文日志: {workflow_complete_log['data']['message']}")
 
         yield {
             "event": "end_of_workflow",
@@ -265,6 +355,18 @@ async def _process_workflow(
 
     except Exception as e:
         import traceback
+
+        # 工作流错误中文日志
+        workflow_error_log = generate_chinese_log(
+            "workflow_error",
+            f"❌ 工作流执行遇到错误: {str(e)}",
+            workflow_id=workflow_id,
+            error_type=type(e).__name__,
+            error_details=str(e),
+            current_node=current_node,
+            error_location="workflow_execution"
+        )
+        logger.error(f"中文日志: {workflow_error_log['data']['message']}")
 
         traceback.print_exc()
         logger.error("Error in Agent workflow: %s", str(e))
