@@ -198,12 +198,7 @@ def apply_prompt_template(prompt_name: str, state: State, template: str = None) 
         log_template_with_line(tmpl_logger.debug, f"  └─ formatting_success: True")  # line:190
         
         # 记录完整的系统提示词（用于调试）
-        log_template_with_line(tmpl_logger.debug, f"COMPLETE_SYSTEM_PROMPT:")       # line:193
-        prompt_lines = system_prompt.split('\n')
-        for i, line in enumerate(prompt_lines[:50]):  # 只记录前50行
-            log_template_with_line(tmpl_logger.debug, f"  {i+1:02d}: {repr(line)}")  # line:196
-        if len(prompt_lines) > 50:
-            log_template_with_line(tmpl_logger.debug, f"  ... (truncated {len(prompt_lines)-50} more lines)")  # line:198
+        log_template_with_line(tmpl_logger.debug, f"📝 LLM_PROMPT | 模板: {prompt_name}.md | 作用: 系统指令提示词 | 内容: {system_prompt.replace(chr(10), ' ').replace(chr(13), ' ')}")  # line:193
             
     except Exception as e:
         log_template_with_line(tmpl_logger.error, f"❌ PROMPT_FORMATTING_FAILED:")  # line:201
@@ -222,10 +217,7 @@ def apply_prompt_template(prompt_name: str, state: State, template: str = None) 
     log_template_with_line(tmpl_logger.debug, f"  └─ total_messages: {len(final_messages)}")  # line:214
     
     # 记录发送给LLM的完整对话结构
-    log_template_with_line(tmpl_logger.debug, f"LLM_INPUT_STRUCTURE:")              # line:217
-    for i, msg in enumerate(final_messages):
-        content_preview = msg["content"][:150] + "..." if len(msg["content"]) > 150 else msg["content"]
-        log_template_with_line(tmpl_logger.debug, f"  msg_{i}[{msg['role']}]: {repr(content_preview)}")  # line:220
+    log_template_with_line(tmpl_logger.debug, f"🤖 LLM_INPUT | 模板: {prompt_name}.md | 作用: 完整对话消息列表 | 消息数: {len(final_messages)} | 内容: {[{'role': msg['role'], 'content': msg['content'].replace(chr(10), ' ').replace(chr(13), ' ')} for msg in final_messages]}")  # line:217
     
     tmpl_logger.info("=" * 80)
     return final_messages
@@ -335,12 +327,7 @@ def apply_polish_template(_agent: Agent, instruction: str):
         log_template_with_line(tmpl_logger.debug, f"  └─ template_application: successful")  # line:328
         
         # 记录完整的优化提示词（用于调试）
-        log_template_with_line(tmpl_logger.debug, f"COMPLETE_POLISH_PROMPT:")       # line:331
-        prompt_lines = formatted_prompt.split('\n')
-        for i, line in enumerate(prompt_lines[:30]):  # 只记录前30行
-            log_template_with_line(tmpl_logger.debug, f"  {i+1:02d}: {repr(line)}")  # line:334
-        if len(prompt_lines) > 30:
-            log_template_with_line(tmpl_logger.debug, f"  ... (truncated {len(prompt_lines)-30} more lines)")  # line:336
+        log_template_with_line(tmpl_logger.debug, f"🔨 LLM_PROMPT | 模板: agent_polish.md | 作用: 智能体优化指令提示词 | 内容: {formatted_prompt.replace(chr(10), ' ').replace(chr(13), ' ')}")  # line:331
             
     except Exception as e:
         log_template_with_line(tmpl_logger.error, f"❌ POLISH_TEMPLATE_FAILED:")    # line:339

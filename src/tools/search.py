@@ -2,6 +2,7 @@ import logging
 import datetime
 import functools
 import re
+from typing import Union
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.tools import BaseTool
 from .decorators import create_logged_tool
