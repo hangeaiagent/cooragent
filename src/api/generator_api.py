@@ -28,6 +28,51 @@ from src.utils.chinese_names import (
     get_execution_status_chinese
 )
 
+# === 配置生成器专用日志记录器 ===
+def setup_generator_logger():
+    """设置专门的生成器日志记录器，输出到 logs/generator.log"""
+    # 创建logs目录
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # 创建生成器专用logger
+    generator_logger = logging.getLogger("generator_debug")
+    generator_logger.setLevel(logging.DEBUG)
+    
+    # 避免重复添加handler
+    if not generator_logger.handlers:
+        # 文件handler - 详细调试日志
+        file_handler = logging.FileHandler("logs/generator.log", encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        
+        # 格式化器 - 包含更多调试信息和行号
+        detailed_formatter = logging.Formatter(
+            '%(asctime)s | %(levelname)-8s | %(funcName)-20s | %(lineno)-4d | %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        file_handler.setFormatter(detailed_formatter)
+        generator_logger.addHandler(file_handler)
+        
+        # 控制台handler - 重要信息
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        simple_formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(funcName)s:%(lineno)d | %(message)s')
+        console_handler.setFormatter(simple_formatter)
+        generator_logger.addHandler(console_handler)
+    
+    return generator_logger
+
+# 创建生成器日志记录器
+gen_logger = setup_generator_logger()
+
+# 为日志添加行号追踪的辅助函数
+def log_with_line(logger_func, message, line_offset=0):
+    """为日志消息添加行号信息"""
+    import inspect
+    frame = inspect.currentframe().f_back
+    line_no = frame.f_lineno + line_offset
+    return logger_func(f"{message} | src_line:{line_no}")
+
 logger = logging.getLogger(__name__)
 
 # API模型定义
@@ -109,6 +154,18 @@ class GeneratorServer:
             task_id = str(uuid.uuid4())
             user_id = request.user_id or f"user_{task_id[:8]}"
             
+            # === 详细的请求参数日志记录 ===
+            gen_logger.info("=" * 80)
+            gen_logger.info(f"🚀 NEW API REQUEST: /api/generate | line:145-150")
+            gen_logger.info("=" * 80)
+            gen_logger.debug(f"REQUEST_PARAMS: | line:150-155")
+            gen_logger.debug(f"  ├─ task_id: {task_id} | line:111")
+            gen_logger.debug(f"  ├─ user_id: {user_id} | line:112")
+            gen_logger.debug(f"  ├─ content_length: {len(request.content)} characters | line:153")
+            gen_logger.debug(f"  ├─ content_preview: {repr(request.content[:200])} | line:154")
+            gen_logger.debug(f"  ├─ request_timestamp: {datetime.now().isoformat()} | line:155")
+            gen_logger.debug(f"  └─ full_content: {repr(request.content)} | line:156")
+            
             logger.info(f"收到代码生成请求: {request.content[:100]}...")
             
             # 添加中文日志记录
@@ -123,8 +180,9 @@ class GeneratorServer:
             )
             logger.info(f"中文日志: {request_log['data']['message']}")
             
-            # 启动后台任务
-            background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
+            # === 记录任务状态初始化详情 ===
+            gen_logger.debug(f"TASK_INITIALIZATION:")
+            gen_logger.debug(f"  ├─ creating_task_status_object...")
             
             # 记录任务状态并添加中文说明
             task_status = GenerationStatus(
@@ -138,6 +196,19 @@ class GeneratorServer:
             )
             self.generation_tasks[task_id] = task_status
             
+            gen_logger.debug(f"  ├─ task_status_created: {task_status.dict()}")
+            gen_logger.debug(f"  ├─ stored_in_memory: self.generation_tasks[{task_id}]")
+            gen_logger.debug(f"  └─ total_active_tasks: {len(self.generation_tasks)}")
+            
+            # === 启动后台任务 ===
+            gen_logger.info(f"📋 BACKGROUND_TASK_DISPATCH:")
+            gen_logger.debug(f"  ├─ method: self._run_code_generation")
+            gen_logger.debug(f"  ├─ task_id: {task_id}")
+            gen_logger.debug(f"  ├─ content: {request.content[:100]}...")
+            gen_logger.debug(f"  └─ user_id: {user_id}")
+            
+            background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
+            
             # 记录任务启动日志
             task_start_log = generate_chinese_log(
                 "task_started",
@@ -149,12 +220,20 @@ class GeneratorServer:
             )
             logger.info(f"中文日志: {task_start_log['data']['message']}")
             
-            return GenerateResponse(
+            # === 响应返回日志 ===
+            response = GenerateResponse(
                 task_id=task_id,
                 status="processing",
                 message="🤖 代码生成已开始，基于Cooragent多智能体架构进行协作分析",
                 created_at=datetime.now()
             )
+            
+            gen_logger.info(f"✅ API_RESPONSE_READY:")
+            gen_logger.debug(f"  ├─ response_data: {response.dict()}")
+            gen_logger.debug(f"  └─ next_step: background_task_execution")
+            gen_logger.info("=" * 80)
+            
+            return response
         
         @self.app.get("/api/generate/{task_id}/status", response_model=GenerationStatus)
         async def get_generation_status(task_id: str):
@@ -354,7 +433,23 @@ class GeneratorServer:
     
     async def _run_code_generation(self, task_id: str, content: str, user_id: str):
         """运行代码生成任务"""
+        # === 后台任务开始执行详细日志 ===
+        gen_logger.info("=" * 80)
+        gen_logger.info(f"🎯 BACKGROUND TASK STARTED: _run_code_generation")
+        gen_logger.info("=" * 80)
+        gen_logger.debug(f"TASK_EXECUTION_PARAMS:")
+        gen_logger.debug(f"  ├─ task_id: {task_id}")
+        gen_logger.debug(f"  ├─ user_id: {user_id}")
+        gen_logger.debug(f"  ├─ content_length: {len(content)}")
+        gen_logger.debug(f"  ├─ content_preview: {repr(content[:150])}")
+        gen_logger.debug(f"  └─ execution_start: {datetime.now().isoformat()}")
+        
         task = self.generation_tasks[task_id]
+        gen_logger.debug(f"TASK_STATE_BEFORE_EXECUTION:")
+        gen_logger.debug(f"  ├─ current_status: {task.status}")
+        gen_logger.debug(f"  ├─ current_progress: {task.progress}")
+        gen_logger.debug(f"  ├─ current_step: {task.current_step}")
+        gen_logger.debug(f"  └─ task_created_at: {task.created_at}")
         
         # 记录任务开始日志
         task_start_log = generate_chinese_log(
@@ -370,7 +465,23 @@ class GeneratorServer:
         
         # 定义进度更新回调函数
         async def update_progress(message: str, progress: int, current_step: str, step_details: str, **kwargs):
+            # === 详细记录每次进度更新 ===
+            gen_logger.debug(f"PROGRESS_UPDATE_CALLED:")
+            gen_logger.debug(f"  ├─ message: {repr(message)}")
+            gen_logger.debug(f"  ├─ progress: {progress}%")
+            gen_logger.debug(f"  ├─ current_step: {repr(current_step)}")
+            gen_logger.debug(f"  ├─ step_details: {repr(step_details)}")
+            gen_logger.debug(f"  ├─ kwargs: {kwargs}")
+            gen_logger.debug(f"  └─ timestamp: {datetime.now().isoformat()}")
+            
             # 更新任务状态
+            old_status = {
+                'message': task.message,
+                'progress': task.progress,
+                'current_step': task.current_step,
+                'step_details': task.step_details
+            }
+            
             task.message = message
             task.progress = progress
             task.current_step = current_step
@@ -379,8 +490,14 @@ class GeneratorServer:
             # 处理额外的智能体和工具信息
             if 'agents_created' in kwargs:
                 task.agents_created = kwargs['agents_created']
+                gen_logger.debug(f"  ├─ agents_created_updated: {kwargs['agents_created']}")
             if 'tools_selected' in kwargs:
                 task.tools_selected = kwargs['tools_selected']
+                gen_logger.debug(f"  ├─ tools_selected_updated: {kwargs['tools_selected']}")
+            
+            gen_logger.debug(f"TASK_STATE_AFTER_UPDATE:")
+            gen_logger.debug(f"  ├─ old_state: {old_status}")
+            gen_logger.debug(f"  └─ new_state: {task.dict()}")
             
             # 记录进度更新日志
             progress_log = generate_chinese_log(
@@ -397,6 +514,11 @@ class GeneratorServer:
             logger.info(f"[{task_id[:8]}] {current_step}: {message}")
         
         try:
+            gen_logger.info(f"🚀 STARTING_PROJECT_GENERATION:")
+            gen_logger.debug(f"  ├─ calling_generator.generate_project()...")
+            gen_logger.debug(f"  ├─ content: {content[:100]}...")
+            gen_logger.debug(f"  └─ user_id: {user_id}")
+            
             logger.info(f"开始生成项目 {task_id}: {content[:100]}...")
             
             # 初始状态
@@ -477,7 +599,18 @@ class GeneratorServer:
                 await update_progress(message, progress, current_step, step_details, **additional_info)
             
             # 调用Cooragent代码生成器，传入增强的进度回调
+            gen_logger.info(f"📞 CALLING_GENERATOR:")
+            gen_logger.debug(f"  ├─ method: self.generator.generate_project")
+            gen_logger.debug(f"  ├─ parameters: content={content[:50]}..., user_id={user_id}")
+            gen_logger.debug(f"  └─ callback: enhanced_progress_callback")
+            
             zip_path = await self.generator.generate_project(content, user_id, enhanced_progress_callback)
+            
+            gen_logger.info(f"✅ GENERATOR_COMPLETED:")
+            gen_logger.debug(f"  ├─ returned_zip_path: {zip_path}")
+            gen_logger.debug(f"  ├─ file_exists: {zip_path.exists()}")
+            gen_logger.debug(f"  ├─ file_size: {zip_path.stat().st_size if zip_path.exists() else 'N/A'} bytes")
+            gen_logger.debug(f"  └─ completion_time: {datetime.now().isoformat()}")
             
             # 记录生成成功日志
             success_log = generate_chinese_log(
@@ -493,6 +626,7 @@ class GeneratorServer:
             logger.info(f"中文日志: {success_log['data']['message']}")
             
             # 更新状态：生成完成
+            old_task_state = task.dict()
             task.status = "completed"
             task.message = "🎉 基于Cooragent的多智能体项目生成完成！"
             task.progress = 100
@@ -500,6 +634,15 @@ class GeneratorServer:
             task.completed_at = datetime.now()
             task.current_step = "完成"
             task.step_details = f"项目已打包为: {zip_path.name if hasattr(zip_path, 'name') else 'project.zip'}"
+            
+            gen_logger.info(f"🎉 TASK_COMPLETION_SUCCESS:")
+            gen_logger.debug(f"FINAL_TASK_STATE_UPDATE:")
+            gen_logger.debug(f"  ├─ old_state: {old_task_state}")
+            gen_logger.debug(f"  ├─ new_state: {task.dict()}")
+            gen_logger.debug(f"  ├─ execution_duration: {(task.completed_at - task.created_at).total_seconds():.2f} seconds")
+            gen_logger.debug(f"  ├─ final_zip_path: {task.zip_path}")
+            gen_logger.debug(f"  ├─ agents_created: {task.agents_created}")
+            gen_logger.debug(f"  └─ tools_selected: {task.tools_selected}")
             
             # 记录任务完成日志
             completion_log = generate_chinese_log(
@@ -517,7 +660,33 @@ class GeneratorServer:
             logger.info(f"中文日志: {completion_log['data']['message']}")
             logger.info(f"项目生成完成 {task_id}: {zip_path}")
             
+            gen_logger.info("=" * 80)
+            gen_logger.info(f"✅ BACKGROUND TASK COMPLETED SUCCESSFULLY: {task_id[:8]}")
+            gen_logger.info("=" * 80)
+            
         except Exception as e:
+            gen_logger.error("=" * 80)
+            gen_logger.error(f"❌ BACKGROUND TASK FAILED: {task_id[:8]}")
+            gen_logger.error("=" * 80)
+            gen_logger.error(f"EXCEPTION_DETAILS:")
+            gen_logger.error(f"  ├─ exception_type: {type(e).__name__}")
+            gen_logger.error(f"  ├─ exception_message: {str(e)}")
+            gen_logger.error(f"  ├─ task_id: {task_id}")
+            gen_logger.error(f"  ├─ user_id: {user_id}")
+            gen_logger.error(f"  ├─ failure_time: {datetime.now().isoformat()}")
+            gen_logger.error(f"  ├─ content_preview: {content[:100]}...")
+            gen_logger.error(f"  ├─ current_progress: {task.progress}%")
+            gen_logger.error(f"  ├─ current_step: {task.current_step}")
+            gen_logger.error(f"  └─ execution_duration: {(datetime.now() - task.created_at).total_seconds():.2f} seconds")
+            
+            # 记录异常堆栈信息
+            import traceback
+            gen_logger.error(f"EXCEPTION_TRACEBACK:")
+            stack_trace = traceback.format_exc()
+            for i, line in enumerate(stack_trace.split('\n')):
+                if line.strip():
+                    gen_logger.error(f"  {i:02d}: {line}")
+            
             # 记录详细错误日志
             error_log = generate_chinese_log(
                 "generation_error",
@@ -534,6 +703,7 @@ class GeneratorServer:
             logger.error(f"中文日志: {error_log['data']['message']}")
             
             # 更新状态：生成失败
+            old_task_state = task.dict()
             task.status = "failed"
             task.message = f"❌ 生成失败: {str(e)}"
             task.progress = 0
@@ -541,6 +711,12 @@ class GeneratorServer:
             task.completed_at = datetime.now()
             task.current_step = "错误"
             task.step_details = f"详细错误信息: {str(e)}"
+            
+            gen_logger.error(f"TASK_STATE_ON_FAILURE:")
+            gen_logger.error(f"  ├─ old_state: {old_task_state}")
+            gen_logger.error(f"  ├─ failed_state: {task.dict()}")
+            gen_logger.error(f"  ├─ execution_duration: {(task.completed_at - task.created_at).total_seconds():.2f} seconds")
+            gen_logger.error(f"  └─ error_preserved: True")
             
             # 记录失败处理日志
             failure_handling_log = generate_chinese_log(
@@ -553,6 +729,10 @@ class GeneratorServer:
             )
             logger.info(f"中文日志: {failure_handling_log['data']['message']}")
             logger.error(f"代码生成失败 {task_id}: {e}", exc_info=True)
+            
+            gen_logger.error("=" * 80)
+            gen_logger.error(f"❌ BACKGROUND TASK ERROR END: {task_id[:8]}")
+            gen_logger.error("=" * 80)
     
     def _setup_background_tasks(self):
         """设置后台任务"""

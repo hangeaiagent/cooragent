@@ -1,53 +1,30 @@
-# Python
+# Python-generated files
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+*.py[oc]
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
 wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+*.egg-info
+.coverage
+agent_history.gif
 
-# Virtual Environment
-venv/
-ENV/
-env/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs
-logs/
-*.log
-
-# Generated files
-generated_projects/
-*.zip
+generated_projects
+logs
+sh
+docs
+# Virtual environments
+.venv
 
 # Environment variables
 .env
-.env.*
-!.env.example
 
-# Mac
+.idea/
+store
+.vscode/*
 .DS_Store
+config/mcp.json
 
-# Project specific
-store/
-*.db
-*.sqlite3
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
