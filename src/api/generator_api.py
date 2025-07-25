@@ -67,11 +67,13 @@ gen_logger = setup_generator_logger()
 
 # 为日志添加行号追踪的辅助函数
 def log_with_line(logger_func, message, line_offset=0):
-    """为日志消息添加行号信息"""
+    """为日志消息添加行号和文件名信息"""
     import inspect
+    import os
     frame = inspect.currentframe().f_back
     line_no = frame.f_lineno + line_offset
-    return logger_func(f"{message} | src_line:{line_no}")
+    filename = os.path.basename(frame.f_code.co_filename)
+    return logger_func(f"{message} | src_line:{line_no} | {filename}")
 
 logger = logging.getLogger(__name__)
 

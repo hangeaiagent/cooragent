@@ -43,11 +43,13 @@ tmpl_logger = setup_template_logger()
 
 # 为日志添加行号追踪的辅助函数
 def log_template_with_line(logger_func, message, line_offset=0):
-    """为模板日志消息添加行号信息"""
+    """为模板日志消息添加行号和文件名信息"""
     import inspect
+    import os
     frame = inspect.currentframe().f_back
     line_no = frame.f_lineno + line_offset
-    return logger_func(f"{message} | src_line:{line_no}")
+    filename = os.path.basename(frame.f_code.co_filename)
+    return logger_func(f"{message} | src_line:{line_no} | {filename}")
 
 def get_prompt_template(prompt_name: str) -> str:
     """加载并处理提示词模板文件"""
