@@ -263,7 +263,7 @@ class CooragentProjectGenerator:
                 workmode="launch"
             )
             logger.info(f"中文日志: {workflow_config_log['data']['message']}")
-
+            
             # 使用Launch模式分析用户需求并生成智能体配置
             # run_agent_workflow 返回异步生成器，需要迭代处理
             final_result = {}
@@ -337,7 +337,7 @@ class CooragentProjectGenerator:
             )
             logger.info(f"中文日志: {workflow_complete_log['data']['message']}")
             
-            if progress_callback:
+                    if progress_callback:
                 await progress_callback(
                     f"多智能体协作分析完成，共执行了 {step_count} 个步骤", 
                     35, 

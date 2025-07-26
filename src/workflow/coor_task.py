@@ -95,7 +95,7 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher", "__en
 
         validated_tools = []
         failed_tools = []
-        
+
         for tool in agent_spec["selected_tools"]:
             if agent_manager.available_tools.get(tool["name"]):
                 tools.append(agent_manager.available_tools[tool["name"]])
@@ -145,7 +145,7 @@ async def agent_factory_node(state: State) -> Command[Literal["publisher", "__en
             user_id=state["user_id"]
         )
         logger.info(f"中文日志: {agent_creation_log['data']['message']}")
-        
+                
         await agent_manager._create_agent_by_prebuilt(
             user_id=state["user_id"],
             name=agent_spec["agent_name"],
@@ -435,7 +435,7 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
         tools_integrated=len(_agent.selected_tools)
     )
     logger.info(f"中文日志: {react_creation_log['data']['message']}")
-    
+
     agent = create_react_agent(
         get_llm_by_type(_agent.llm_type),
         tools=[

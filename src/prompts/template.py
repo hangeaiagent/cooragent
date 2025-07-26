@@ -190,8 +190,8 @@ def apply_prompt_template(prompt_name: str, state: State, template: str = None) 
     
     try:
         system_prompt = PromptTemplate(                                             # line:182
-            input_variables=["CURRENT_TIME"],
-            template=_template,
+        input_variables=["CURRENT_TIME"],
+        template=_template,
         ).format(CURRENT_TIME=current_time, **state)
         
         log_template_with_line(tmpl_logger.info, f"✅ PROMPT_FORMATTING_SUCCESS:")   # line:187
