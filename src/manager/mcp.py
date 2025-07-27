@@ -54,12 +54,10 @@ def mcp_client_config():
                     os.environ[env_key] = env_value
                     
         if transport_type == "sse":
-            if not env_value:
-                logger.warning(f"Environment variable {key} (or specific var from 'env' block if applicable) not set for MCP server {key}. Skipping SSE configuration.")
-                continue
-            
             sse_config = value.copy()
-            sse_config["url"] = sse_config["url"] + '?key=' + env_value
+            # Remove env from SSE config as it's not supported by _create_sse_session
+            if "env" in sse_config:
+                del sse_config["env"]
             sse_config["transport"] = "sse"
             _mcp_client_config[key] = sse_config
 
