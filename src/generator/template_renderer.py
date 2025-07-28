@@ -12,17 +12,16 @@ from src.interface.agent import Agent
 class TemplateRenderer:
     """模板渲染器，生成各种项目文件"""
     
-    async def render_main_app(self, config: Dict[str, Any]) -> str:
+    async def render_main_app(self, agents_config: Dict[str, Any]) -> str:
         """渲染主应用入口文件"""
-        agents = config["agents"]
+        agents = agents_config["agents"]
         agent_names = [agent.agent_name for agent in agents]
-        tools_used = config["tools"]
+        tools_used = agents_config["tools_used"]
         
         return f'''"""
 基于Cooragent的多智能体应用
 自动生成于: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
-用户需求: {config["project_info"]["user_input"][:200]}...
 生成的智能体: {", ".join(agent_names)}
 使用的工具: {", ".join(tools_used)}
 """
@@ -471,9 +470,9 @@ if __name__ == "__main__":
     main()
 '''
     
-    async def render_dockerfile(self, config: Dict[str, Any]) -> str:
+    async def render_dockerfile(self, requirements: Dict[str, Any]) -> str:
         """渲染Dockerfile"""
-        tools_used = config["tools"]
+        tools_used = list(requirements.get("tool_components", {}).keys())
         
         # 根据工具确定是否需要额外的系统依赖
         system_deps = []
@@ -527,7 +526,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 CMD ["python", "main.py"]
 '''
     
-    async def render_docker_compose(self, config: Dict[str, Any]) -> str:
+    async def render_docker_compose(self, requirements: Dict[str, Any]) -> str:
         """渲染docker-compose.yml"""
         return '''version: '3.8'
 
@@ -554,12 +553,11 @@ volumes:
   logs:
 '''
     
-    async def render_readme(self, config: Dict[str, Any]) -> str:
+    async def render_readme(self, agents_config: Dict[str, Any]) -> str:
         """渲染README.md"""
-        agents = config["agents"]
+        agents = agents_config["agents"]
         agent_names = [agent.agent_name for agent in agents]
-        tools_used = config["tools"]
-        project_info = config["project_info"]
+        tools_used = agents_config["tools_used"]
         
         return f'''# 多智能体协作应用
 
@@ -567,8 +565,7 @@ volumes:
 
 ## 项目信息
 
-- **生成时间**: {project_info["generated_at"]}
-- **用户需求**: {project_info["user_input"][:300]}...
+- **生成时间**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 - **生成的智能体**: {", ".join(agent_names)}
 - **使用的工具**: {", ".join(tools_used)}
 
