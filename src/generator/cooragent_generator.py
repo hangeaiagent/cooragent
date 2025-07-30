@@ -45,20 +45,20 @@ class DynamicComponentAnalyzer:
         }
         
         self.tool_dependencies = {
-            "tavily_tool": ["search.py"],
-            "python_repl_tool": ["python_repl.py"],
-            "bash_tool": ["bash_tool.py"],
-            "crawl_tool": ["crawl.py", "crawler/"],
-            "browser_tool": ["browser.py", "browser_decorators.py"],
-            "excel_tool": ["excel/"],
-            "gmail_tool": ["gmail.py"],
-            "slack_tool": ["slack.py"],
-            "video_tool": ["video.py"],
-            "file_management_tool": ["file_management.py"],
-            "avatar_tool": ["avatar_tool.py"],
-            "office365_tool": ["office365.py"],
-            "web_preview_tool": ["web_preview_tool.py", "web_preview/"],
-            "websocket_tool": ["websocket_manager.py"],
+            "tavily_tool": ["search.py", "decorators.py"],
+            "python_repl_tool": ["python_repl.py", "decorators.py"],
+            "bash_tool": ["bash_tool.py", "decorators.py"],
+            "crawl_tool": ["crawl.py", "crawler/", "decorators.py"],
+            "browser_tool": ["browser.py", "browser_decorators.py", "decorators.py"],
+            "excel_tool": ["excel/", "decorators.py"],
+            "gmail_tool": ["gmail.py", "decorators.py"],
+            "slack_tool": ["slack.py", "decorators.py"],
+            "video_tool": ["video.py", "decorators.py"],
+            "file_management_tool": ["file_management.py", "decorators.py"],
+            "avatar_tool": ["avatar_tool.py", "decorators.py"],
+            "office365_tool": ["office365.py", "decorators.py"],
+            "web_preview_tool": ["web_preview_tool.py", "web_preview/", "decorators.py"],
+            "websocket_tool": ["websocket_manager.py", "decorators.py"],
             "decorators": ["decorators.py"]
         }
         
@@ -104,6 +104,10 @@ class DynamicComponentAnalyzer:
                 requirements["tool_components"][tool] = self.tool_dependencies[tool]
             elif tool.startswith("mcp_"):
                 requirements["mcp_components"][tool] = self.mcp_dependencies.get(tool, [])
+        
+        # 确保decorators.py总是被包含，所有工具都需要它
+        if requirements["tool_components"]:
+            requirements["tool_components"]["decorators"] = ["decorators.py"]
         
         # 如果使用了MCP工具，需要MCP管理器
         if requirements["mcp_components"]:
