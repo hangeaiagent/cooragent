@@ -19,6 +19,7 @@ from src.workflow.cache import workflow_cache as cache
 from src.utils.content_process import clean_response_tags
 from src.interface.serializer import AgentBuilder
 from src.utils.chinese_names import generate_chinese_log, format_agent_progress_log, get_agent_chinese_name
+import asyncio
 
 
 logger = logging.getLogger(__name__)
@@ -392,55 +393,87 @@ async def publisher_node(
 
 
 async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end__"]]:
-    """Proxy node that acts as a proxy for the agent."""
-    logger.info(
-        "Agent Proxy Start to work in %s workmode, %s agent is going to work",
-        state["workflow_mode"],
-        state["next"],
-    )
+    """智能体代理节点"""
+    _agent = state["next"]
     
-    agent_name = state["next"]
+    # 处理_agent可能是字符串或对象的情况
+    if isinstance(_agent, str):
+        # 如果是字符串，从agent_manager中获取智能体对象
+        agent_name = _agent
+        if agent_name not in agent_manager.available_agents:
+            logger.error(f"智能体 {agent_name} 不存在")
+            return Command(
+                update={
+                    "messages": [
+                        {
+                            "content": f"❌ 智能体 {agent_name} 不存在",
+                            "tool": state["next"],
+                            "role": "assistant",
+                        }
+                    ],
+                    "processing_agent_name": agent_name,
+                    "agent_name": agent_name,
+                },
+                goto="publisher",
+            )
+        _agent = agent_manager.available_agents[agent_name]
+    else:
+        # 如果是对象，直接使用
+        agent_name = _agent.agent_name
     
-    # 代理节点启动日志
+    # 智能体代理开始日志
     proxy_start_log = generate_chinese_log(
         "agent_proxy_start",
-        f"🤖 智能体代理启动，准备执行智能体: {agent_name}",
-        target_agent=agent_name,
-        workflow_mode=state["workflow_mode"],
-        agent_chinese_name=get_agent_chinese_name(agent_name)
+        f"🎯 智能体代理开始执行: {agent_name}",
+        agent_name=agent_name,
+        workflow_mode=state.get("workflow_mode", "unknown"),
+        user_id=state.get("user_id")
     )
     logger.info(f"中文日志: {proxy_start_log['data']['message']}")
 
-    _agent = agent_manager.available_agents[state["next"]]
-    state["initialized"] = True
+    # 检查工具可用性
+    available_tools = []
+    missing_tools = []
     
-    # 智能体配置加载日志
-    agent_config_log = generate_chinese_log(
-        "agent_config_loaded",
-        f"📋 智能体配置已加载: {agent_name}",
-        agent_name=agent_name,
-        agent_description=_agent.description,
-        llm_type=_agent.llm_type,
-        tools_count=len(_agent.selected_tools),
-        agent_tools=[tool.name for tool in _agent.selected_tools]
-    )
-    logger.info(f"中文日志: {agent_config_log['data']['message']}")
+    for tool in _agent.selected_tools:
+        if tool.name in agent_manager.available_tools:
+            available_tools.append(agent_manager.available_tools[tool.name])
+        else:
+            missing_tools.append(tool.name)
+            logger.warning(f"工具 {tool.name} 不可用，跳过")
+    
+    if missing_tools:
+        logger.warning(f"智能体 {agent_name} 缺少工具: {missing_tools}")
+    
+    if not available_tools:
+        logger.error(f"智能体 {agent_name} 没有可用的工具")
+        return Command(
+            update={
+                "messages": [
+                    {
+                        "content": f"❌ 智能体 {agent_name} 执行失败：没有可用的工具。缺少的工具：{missing_tools}",
+                        "tool": state["next"],
+                        "role": "assistant",
+                    }
+                ],
+                "processing_agent_name": agent_name,
+                "agent_name": agent_name,
+            },
+            goto="publisher",
+        )
 
-    # 创建ReAct智能体
     react_creation_log = generate_chinese_log(
         "react_agent_creation",
         f"⚙️ 正在创建ReAct智能体实例: {agent_name}",
         agent_name=agent_name,
         react_pattern="observation_thought_action",
-        tools_integrated=len(_agent.selected_tools)
+        tools_integrated=len(available_tools)
     )
     logger.info(f"中文日志: {react_creation_log['data']['message']}")
 
     agent = create_react_agent(
         get_llm_by_type(_agent.llm_type),
-        tools=[
-            agent_manager.available_tools[tool.name] for tool in _agent.selected_tools
-        ],
+        tools=available_tools,
         prompt=apply_prompt(state, _agent.prompt),
     )
 
@@ -461,18 +494,56 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
     )
     logger.info(f"中文日志: {agent_execution_log['data']['message']}")
 
-    response = await agent.ainvoke(state, config=config)
-    
-    # 智能体执行完成日志
-    agent_execution_complete_log = generate_chinese_log(
-        "agent_execution_complete",
-        f"✅ 智能体任务执行完成: {agent_name}",
-        agent_name=agent_name,
-        execution_status="completed",
-        response_length=len(response["messages"][-1].content) if response.get("messages") else 0,
-        final_message_preview=response["messages"][-1].content[:100] + "..." if response.get("messages") and len(response["messages"][-1].content) > 100 else response["messages"][-1].content if response.get("messages") else ""
-    )
-    logger.info(f"中文日志: {agent_execution_complete_log['data']['message']}")
+    try:
+        # 添加超时机制
+        response = await asyncio.wait_for(
+            agent.ainvoke(state, config=config),
+            timeout=300  # 5分钟超时
+        )
+        
+        # 智能体执行完成日志
+        agent_execution_complete_log = generate_chinese_log(
+            "agent_execution_complete",
+            f"✅ 智能体任务执行完成: {agent_name}",
+            agent_name=agent_name,
+            execution_status="completed",
+            response_length=len(response["messages"][-1].content) if response.get("messages") else 0,
+            final_message_preview=response["messages"][-1].content[:100] + "..." if response.get("messages") and len(response["messages"][-1].content) > 100 else response["messages"][-1].content if response.get("messages") else ""
+        )
+        logger.info(f"中文日志: {agent_execution_complete_log['data']['message']}")
+
+    except asyncio.TimeoutError:
+        logger.error(f"智能体 {agent_name} 执行超时")
+        return Command(
+            update={
+                "messages": [
+                    {
+                        "content": f"⏰ 智能体 {agent_name} 执行超时，请重试或简化需求",
+                        "tool": state["next"],
+                        "role": "assistant",
+                    }
+                ],
+                "processing_agent_name": agent_name,
+                "agent_name": agent_name,
+            },
+            goto="publisher",
+        )
+    except Exception as e:
+        logger.error(f"智能体 {agent_name} 执行出错: {e}")
+        return Command(
+            update={
+                "messages": [
+                    {
+                        "content": f"❌ 智能体 {agent_name} 执行出错: {str(e)}",
+                        "tool": state["next"],
+                        "role": "assistant",
+                    }
+                ],
+                "processing_agent_name": agent_name,
+                "agent_name": agent_name,
+            },
+            goto="publisher",
+        )
 
     if state["workflow_mode"] == "launch":
         cache.restore_node(
@@ -520,8 +591,8 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
                     "role": "assistant",
                 }
             ],
-            "processing_agent_name": _agent.agent_name,
-            "agent_name": _agent.agent_name,
+            "processing_agent_name": agent_name,
+            "agent_name": agent_name,
         },
         goto="publisher",
     )

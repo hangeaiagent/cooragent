@@ -748,22 +748,28 @@ class EnhancedCooragentProjectGenerator:
         
         # 复制工具组件
         for tool_name, files in requirements["tool_components"].items():
-            target_dir = src_path / "tools" / tool_name
-            source_dir = self.cooragent_root / "src" / "tools" / tool_name
+            tools_source_dir = self.cooragent_root / "src" / "tools"
+            tools_target_dir = src_path / "tools"
+            
+            # 确保tools目录存在
+            tools_target_dir.mkdir(parents=True, exist_ok=True)
             
             for file in files:
-                source_file = source_dir / file
+                source_file = tools_source_dir / file
                 if source_file.exists():
-                    target_file = target_dir / file
                     if source_file.is_file():
+                        target_file = tools_target_dir / file
                         shutil.copy2(source_file, target_file)
                     elif source_file.is_dir():
-                        shutil.copytree(source_file, target_file, dirs_exist_ok=True)
-                
-                # 确保有__init__.py文件
-                init_file = target_dir / "__init__.py"
-                if not init_file.exists():
-                    init_file.touch()
+                        target_dir = tools_target_dir / file
+                        shutil.copytree(source_file, target_dir, dirs_exist_ok=True)
+                else:
+                    logger.warning(f"工具文件不存在: {source_file}")
+            
+            # 确保tools目录有__init__.py文件
+            tools_init_file = src_path / "tools" / "__init__.py"
+            if not tools_init_file.exists():
+                tools_init_file.touch()
         
         # 复制MCP管理器
         mcp_manager_source = self.cooragent_root / "src" / "manager" / "mcp.py"
@@ -773,22 +779,28 @@ class EnhancedCooragentProjectGenerator:
         
         # 复制MCP工具服务器
         for tool_name, files in requirements["mcp_components"].items():
-            target_dir = src_path / "tools" / tool_name
-            source_dir = self.cooragent_root / "src" / "tools" / tool_name
+            tools_source_dir = self.cooragent_root / "src" / "tools"
+            tools_target_dir = src_path / "tools"
+            
+            # 确保tools目录存在
+            tools_target_dir.mkdir(parents=True, exist_ok=True)
             
             for file in files:
-                source_file = source_dir / file
+                source_file = tools_source_dir / file
                 if source_file.exists():
-                    target_file = target_dir / file
                     if source_file.is_file():
+                        target_file = tools_target_dir / file
                         shutil.copy2(source_file, target_file)
                     elif source_file.is_dir():
-                        shutil.copytree(source_file, target_file, dirs_exist_ok=True)
-                
-                # 确保有__init__.py文件
-                init_file = target_dir / "__init__.py"
-                if not init_file.exists():
-                    init_file.touch()
+                        target_dir = tools_target_dir / file
+                        shutil.copytree(source_file, target_dir, dirs_exist_ok=True)
+                else:
+                    logger.warning(f"MCP工具文件不存在: {source_file}")
+            
+            # 确保tools目录有__init__.py文件
+            tools_init_file = src_path / "tools" / "__init__.py"
+            if not tools_init_file.exists():
+                tools_init_file.touch()
     
     async def _generate_agent_configs(self, project_path: Path, agents_config: Dict[str, Any]):
         """生成智能体配置文件"""
@@ -1204,9 +1216,8 @@ def agent_factory_graph() -> AgentWorkflow:
         zip_path = project_path.with_suffix('.zip')
         
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in project_path.rglob('*'):
-                for file in files:
-                    file_path = root / file
+            for file_path in project_path.rglob('*'):
+                if file_path.is_file():
                     # 计算相对路径
                     arcname = file_path.relative_to(project_path.parent)
                     zipf.write(file_path, arcname)
