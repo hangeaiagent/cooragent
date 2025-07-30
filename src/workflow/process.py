@@ -145,7 +145,7 @@ async def run_agent_workflow(
         if agent.user_id == "share":
             TEAM_MEMBERS.append(agent.agent_name)
 
-        if agent.user_id == user_id or agent.agent_name in coor_agents:
+        if agent.user_id == user_id or (coor_agents and agent.agent_name in coor_agents):
             TEAM_MEMBERS.append(agent.agent_name)
 
         if agent.user_id != "share":

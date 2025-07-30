@@ -151,7 +151,7 @@ DEBUG=false
 LOG_LEVEL=INFO
 
 # 用户代理
-USR_AGENT=cooragent_generated_app
+USR_AGENT=True
 
 # ================================
 # 可选配置

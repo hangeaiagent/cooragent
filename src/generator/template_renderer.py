@@ -43,10 +43,10 @@ from src.workflow.process import run_agent_workflow
 from src.manager import agent_manager
 from src.interface.agent import TaskType
 from src.utils.path_utils import get_project_root
-from src.service.env import load_env
 
 # 加载环境变量
-load_env()
+from dotenv import load_dotenv
+load_dotenv()
 
 # 配置日志
 logging.basicConfig(
@@ -91,6 +91,9 @@ app.add_middleware(
 )
 
 # 挂载静态文件
+static_dir = Path("static")
+if not static_dir.exists():
+    static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
