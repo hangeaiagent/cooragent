@@ -59,6 +59,25 @@ class DynamicComponentAnalyzer:
             "office365_tool": ["office365.py", "decorators.py"],
             "web_preview_tool": ["web_preview_tool.py", "web_preview/", "decorators.py"],
             "websocket_tool": ["websocket_manager.py", "decorators.py"],
+            # GitHub版本的MCP工具
+            "searchFlightItineraries": ["decorators.py"],
+            "flight_search": ["decorators.py"],
+            "search_flights": ["decorators.py"],
+            "maps_direction_driving": ["decorators.py"],
+            "maps_direction_transit": ["decorators.py"],
+            "maps_direction_walking": ["decorators.py"],
+            "maps_distance": ["decorators.py"],
+            "maps_geo": ["decorators.py"],
+            "maps_regeocode": ["decorators.py"],
+            "maps_ip_location": ["decorators.py"],
+            "maps_around_search": ["decorators.py"],
+            "maps_search_detail": ["decorators.py"],
+            "maps_text_search": ["decorators.py"],
+            "amap_tool": ["decorators.py"],
+            "mcp_doc": ["MCP-Doc/", "decorators.py"],
+            "document_processor": ["MCP-Doc/", "decorators.py"],
+            "mcp_image_downloader": ["mcp-image-downloader/", "decorators.py"],
+            "image_downloader": ["mcp-image-downloader/", "decorators.py"],
             "decorators": ["decorators.py"]
         }
         
@@ -183,20 +202,73 @@ class MCPEcosystemIntegrator:
             ]
         }
         
-        # 根据使用的工具添加MCP服务器
-        if "mcp_doc" in tools_used:
-            mcp_config["mcpServers"]["mcp-doc"] = {
+        # GitHub版本的MCP服务器配置
+        github_mcp_servers = {
+            "AMAP": {
+                "url": "https://mcp.amap.com/sse",
+                "env": {
+                    "AMAP_MAPS_API_KEY": "your_amap_maps_api_key"
+                }
+            },
+            "excel": {
+                "command": "npx",
+                "args": ["--yes", "@negokaz/excel-mcp-server"],
+                "env": {
+                    "EXCEL_MCP_PAGING_CELLS_LIMIT": "4000"
+                }
+            },
+            "word": {
                 "command": "python",
-                "args": [str(project_path / "src" / "tools" / "MCP-Doc" / "server.py")],
-                "env": {}
-            }
-        
-        if "mcp_image_downloader" in tools_used:
-            mcp_config["mcpServers"]["image-downloader"] = {
+                "args": [str(project_path / "src" / "tools" / "MCP-Doc" / "server.py")]
+            },
+            "image-downloader": {
                 "command": "node",
-                "args": [str(project_path / "src" / "tools" / "mcp-image-downloader" / "build" / "index.js")],
-                "env": {}
+                "args": [str(project_path / "src" / "tools" / "mcp-image-downloader" / "build" / "index.js")]
+            },
+            "variflight-mcp": {
+                "type": "sse",
+                "url": "your_modelscope_variflight_mcp_url"
             }
+        }
+        
+        # 工具到MCP服务器的映射（GitHub版本）
+        tool_to_mcp_mapping = {
+            # 地图相关工具
+            "maps_direction_driving": "AMAP",
+            "maps_direction_transit": "AMAP",
+            "maps_direction_walking": "AMAP",
+            "maps_distance": "AMAP",
+            "maps_geo": "AMAP",
+            "maps_regeocode": "AMAP",
+            "maps_ip_location": "AMAP",
+            "maps_around_search": "AMAP",
+            "maps_search_detail": "AMAP",
+            "maps_text_search": "AMAP",
+            "amap_tool": "AMAP",
+            
+            # Excel工具
+            "excel_tool": "excel",
+            
+            # 文档工具
+            "mcp_doc": "word",
+            "document_processor": "word",
+            
+            # 图片下载工具
+            "mcp_image_downloader": "image-downloader",
+            "image_downloader": "image-downloader",
+            
+            # 航班工具
+            "searchFlightItineraries": "variflight-mcp",
+            "flight_search": "variflight-mcp",
+            "search_flights": "variflight-mcp"
+        }
+        
+        # 根据使用的工具添加MCP服务器
+        for tool in tools_used:
+            if tool in tool_to_mcp_mapping:
+                mcp_server_name = tool_to_mcp_mapping[tool]
+                if mcp_server_name in github_mcp_servers:
+                    mcp_config["mcpServers"][mcp_server_name] = github_mcp_servers[mcp_server_name]
         
         # 保存配置文件
         config_path = project_path / "config" / "mcp.json"

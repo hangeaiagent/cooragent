@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅游规划智能体</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .result-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .markdown-content { line-height: 1.8; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { margin: 1.5rem 0 1rem 0; font-weight: bold; }
+        .markdown-content h1 { font-size: 1.5rem; } .markdown-content h2 { font-size: 1.3rem; } .markdown-content h3 { font-size: 1.1rem; }
+        .markdown-content ul, .markdown-content ol { margin-left: 2rem; margin-bottom: 1rem; }
+        .markdown-content li { margin-bottom: 0.5rem; }
+        .progress-bar { transition: width 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="gradient-bg min-h-screen">
+        <div class="container mx-auto px-4 py-8">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-4"><i class="fas fa-plane-departure mr-3"></i>旅游规划智能体</h1>
+                <p class="text-white text-lg opacity-90">让AI为您定制完美的旅行计划</p>
+                <div class="mt-4"><a href="http://localhost:8000/" class="text-white opacity-75 hover:opacity-100 transition duration-300"><i class="fas fa-arrow-left mr-2"></i>返回主页</a></div>
+            </div>
+            
+            <div class="max-w-4xl mx-auto mb-8">
+                <div class="result-card rounded-lg p-6 shadow-xl">
+                    <form id="planningForm" class="space-y-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-map-marker-alt mr-2"></i>出发地
+                                </label>
+                                <input type="text" id="departure" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="请输入出发城市，如：北京" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-map-marker-alt mr-2"></i>目的地
+                                </label>
+                                <input type="text" id="destination" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="请输入目标城市，如：成都" required>
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-calendar-alt mr-2"></i>出发日期
+                                </label>
+                                <input type="date" id="startDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-calendar-check mr-2"></i>返程日期
+                                </label>
+                                <input type="date" id="endDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-users mr-2"></i>人数
+                                </label>
+                                <select id="travelers" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                                    <option value="1">1人</option>
+                                    <option value="2">2人</option>
+                                    <option value="3">3人</option>
+                                    <option value="4">4人</option>
+                                    <option value="5+">5人以上</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-dollar-sign mr-2"></i>预算范围（元）
+                                </label>
+                                <select id="budget" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                                    <option value="经济型（2000-5000）">经济型（2000-5000）</option>
+                                    <option value="舒适型（5000-10000）">舒适型（5000-10000）</option>
+                                    <option value="豪华型（10000+）">豪华型（10000+）</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    <i class="fas fa-heart mr-2"></i>旅行偏好
+                                </label>
+                                <select id="preference" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                                    <option value="文化历史">文化历史</option>
+                                    <option value="自然风光">自然风光</option>
+                                    <option value="美食体验">美食体验</option>
+                                    <option value="休闲度假">休闲度假</option>
+                                    <option value="冒险刺激">冒险刺激</option>
+                                    <option value="综合体验">综合体验</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                <i class="fas fa-comment mr-2"></i>特殊需求（可选）
+                            </label>
+                            <textarea id="specialRequests" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="3" placeholder="请描述您的特殊需求，如：无障碍设施、素食餐厅、儿童友好等"></textarea>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 transform hover:scale-105">
+                                <i class="fas fa-magic mr-2"></i>生成旅行计划
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="progressContainer" class="max-w-4xl mx-auto mb-8 hidden">
+                <div class="result-card rounded-lg p-6 shadow-xl">
+                    <div class="text-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700">正在生成您的专属旅行计划...</h3>
+                        <p id="progressText" class="text-gray-600 mt-2">初始化中...</p>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="progressBar" class="progress-bar bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center mt-2">
+                        <span id="progressPercent" class="text-sm text-gray-600">0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="resultContainer" class="max-w-4xl mx-auto hidden">
+                <div class="result-card rounded-lg p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">
+                            <i class="fas fa-route mr-2"></i>您的旅行计划
+                        </h2>
+                        <div class="space-x-2">
+                            <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                <i class="fas fa-download mr-2"></i>导出Markdown
+                            </button>
+                            <button id="newPlanBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                <i class="fas fa-plus mr-2"></i>新建计划
+                            </button>
+                        </div>
+                    </div>
+                    <div id="resultContent" class="markdown-content text-gray-700"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        let currentTaskId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date(); 
+            const tomorrow = new Date(today); 
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('startDate').valueAsDate = today; 
+            document.getElementById('endDate').valueAsDate = tomorrow;
+        });
+
+        document.getElementById('planningForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const departure = document.getElementById('departure').value;
+            const destination = document.getElementById('destination').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const travelers = document.getElementById('travelers').value;
+            const budget = document.getElementById('budget').value;
+            const preference = document.getElementById('preference').value;
+            const specialRequests = document.getElementById('specialRequests').value;
+
+            const requestText = `请帮我制定从${departure}到${destination}的旅游计划。
+出行时间：${startDate} 至 ${endDate}
+出行人数：${travelers}
+预算范围：${budget}
+旅行偏好：${preference}
+${specialRequests ? `特殊需求：${specialRequests}` : ''}
+
+请提供详细的旅游规划，包括：
+1. 往返航班推荐和价格
+2. 住宿推荐（包含价格和位置）  
+3. 每日行程安排和景点推荐
+4. 美食推荐
+5. 详细预算分析
+6. 旅行贴士和注意事项`;
+
+            try { 
+                showProgress(); 
+                await generateTravelPlan(requestText); 
+            } catch (error) { 
+                console.error('生成旅行计划失败:', error); 
+                alert('生成旅行计划失败，请稍后重试。错误: ' + error.message); 
+                hideProgress(); 
+            }
+        });
+
+        async function generateTravelPlan(requestText) {
+            const response = await fetch(`${API_BASE_URL}/api/generate`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: requestText, user_id: 'travel_user_' + Date.now() })
+            });
+            
+            if (!response.ok) { 
+                const errorData = await response.json().catch(() => ({})); 
+                throw new Error(`HTTP ${response.status}: ${errorData.detail || '请求失败'}`); 
+            }
+            
+            const data = await response.json(); 
+            currentTaskId = data.task_id; 
+            pollTaskStatus(currentTaskId);
+        }
+
+        async function pollTaskStatus(taskId) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/generate/${taskId}/status`);
+                    if (!response.ok) throw new Error(`状态查询失败: ${response.status}`);
+                    
+                    const data = await response.json(); 
+                    updateProgress(data.progress || 0, data.stage || '处理中...');
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval); 
+                        updateProgress(100, '生成完成！');
+                        
+                        // 显示示例结果
+                        setTimeout(() => { 
+                            showResult(generateSampleResult()); 
+                            hideProgress(); 
+                        }, 1000);
+                    } else if (data.status === 'failed') { 
+                        clearInterval(pollInterval); 
+                        throw new Error(data.error || '生成失败'); 
+                    }
+                } catch (error) { 
+                    clearInterval(pollInterval); 
+                    console.error('轮询状态失败:', error); 
+                    hideProgress(); 
+                    alert('获取状态失败: ' + error.message); 
+                }
+            }, 2000);
+        }
+
+        function showProgress() { 
+            document.getElementById('progressContainer').classList.remove('hidden'); 
+            document.getElementById('resultContainer').classList.add('hidden'); 
+            updateProgress(0, '开始生成旅行计划...'); 
+        }
+        
+        function updateProgress(percent, text) { 
+            document.getElementById('progressBar').style.width = percent + '%'; 
+            document.getElementById('progressText').textContent = text; 
+            document.getElementById('progressPercent').textContent = Math.round(percent) + '%'; 
+        }
+        
+        function hideProgress() { 
+            document.getElementById('progressContainer').classList.add('hidden'); 
+        }
+        
+        function showResult(result) { 
+            document.getElementById('resultContainer').classList.remove('hidden'); 
+            document.getElementById('resultContent').innerHTML = result; 
+        }
+
+        function generateSampleResult() {
+            const departure = document.getElementById('departure').value;
+            const destination = document.getElementById('destination').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            return `<h1>🌟 ${departure} → ${destination} 旅行计划</h1>
+<h2>📅 行程概览</h2>
+<ul>
+    <li><strong>出行时间：</strong>${startDate} 至 ${endDate}</li>
+    <li><strong>行程天数：</strong>${calculateDays(startDate, endDate)}天</li>
+    <li><strong>出行人数：</strong>${document.getElementById('travelers').value}</li>
+    <li><strong>预算范围：</strong>${document.getElementById('budget').value}</li>
+</ul>
+
+<h2>✈️ 交通安排</h2>
+<h3>往返航班推荐</h3>
+<ul>
+    <li><strong>去程：</strong>${departure} → ${destination}
+        <ul>
+            <li>推荐航班：国航CA1234 ${startDate} 08:00-11:30</li>
+            <li>票价：约¥800/人</li>
+            <li>航程：3小时30分钟</li>
+        </ul>
+    </li>
+    <li><strong>返程：</strong>${destination} → ${departure}
+        <ul>
+            <li>推荐航班：东航MU5678 ${endDate} 15:00-18:30</li>
+            <li>票价：约¥850/人</li>
+            <li>航程：3小时30分钟</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>🏨 住宿推荐</h2>
+<ul>
+    <li><strong>推荐酒店：</strong>${destination}市中心智选假日酒店
+        <ul>
+            <li>位置：市中心，交通便利</li>
+            <li>价格：¥380/晚</li>
+            <li>设施：免费WiFi、健身房、早餐</li>
+            <li>评分：4.5/5.0</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>📍 每日行程</h2>
+<h3>Day 1: 抵达${destination}</h3>
+<ul>
+    <li><strong>上午：</strong>抵达${destination}，入住酒店</li>
+    <li><strong>下午：</strong>游览${destination}古城区，感受历史文化</li>
+    <li><strong>晚上：</strong>品尝当地特色美食</li>
+</ul>
+
+<h3>Day 2: ${destination}深度游</h3>
+<ul>
+    <li><strong>上午：</strong>参观著名景点A</li>
+    <li><strong>下午：</strong>游览景点B，体验当地文化</li>
+    <li><strong>晚上：</strong>当地特色表演观赏</li>
+</ul>
+
+<h2>🍜 美食推荐</h2>
+<ul>
+    <li><strong>当地特色菜A：</strong>推荐餐厅"老字号餐厅"</li>
+    <li><strong>当地特色菜B：</strong>推荐餐厅"网红小店"</li>
+    <li><strong>小吃街：</strong>${destination}美食街，各种地道小吃</li>
+</ul>
+
+<h2>💰 预算分析</h2>
+<ul>
+    <li><strong>交通费用：</strong>¥1,650（往返机票）</li>
+    <li><strong>住宿费用：</strong>¥760（2晚酒店）</li>
+    <li><strong>餐饮费用：</strong>¥600（预估）</li>
+    <li><strong>景点门票：</strong>¥300</li>
+    <li><strong>其他费用：</strong>¥200</li>
+    <li><strong>总计：</strong>约¥3,510/人</li>
+</ul>
+
+<h2>📝 旅行贴士</h2>
+<ul>
+    <li>建议提前预订机票和酒店，价格更优惠</li>
+    <li>随身携带身份证等有效证件</li>
+    <li>关注当地天气，准备合适衣物</li>
+    <li>下载当地交通APP，出行更便利</li>
+    <li>尊重当地文化和习俗</li>
+</ul>
+
+<p><em>🎉 祝您旅途愉快！</em></p>`;
+        }
+
+        function calculateDays(startDate, endDate) { 
+            const start = new Date(startDate);
+            const end = new Date(endDate); 
+            return Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)); 
+        }
+
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            const content = document.getElementById('resultContent').innerHTML;
+            let markdown = content
+                .replace(/<h1>/g, '# ')
+                .replace(/<\/h1>/g, '\n\n')
+                .replace(/<h2>/g, '## ')
+                .replace(/<\/h2>/g, '\n\n')
+                .replace(/<h3>/g, '### ')
+                .replace(/<\/h3>/g, '\n\n')
+                .replace(/<ul>/g, '')
+                .replace(/<\/ul>/g, '\n')
+                .replace(/<li>/g, '- ')
+                .replace(/<\/li>/g, '\n')
+                .replace(/<strong>/g, '**')
+                .replace(/<\/strong>/g, '**')
+                .replace(/<em>/g, '*')
+                .replace(/<\/em>/g, '*')
+                .replace(/<p>/g, '')
+                .replace(/<\/p>/g, '\n\n')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/\n\s*\n\s*\n/g, '\n\n');
+                
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; 
+            a.download = `旅行计划_${new Date().toISOString().split('T')[0]}.md`; 
+            document.body.appendChild(a); 
+            a.click(); 
+            document.body.removeChild(a); 
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('newPlanBtn').addEventListener('click', function() {
+            document.getElementById('resultContainer').classList.add('hidden'); 
+            document.getElementById('progressContainer').classList.add('hidden'); 
+            document.getElementById('planningForm').reset();
+            
+            const today = new Date();
+            const tomorrow = new Date(today); 
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('startDate').valueAsDate = today; 
+            document.getElementById('endDate').valueAsDate = tomorrow;
+        });
+    </script>
+</body>
+</html> 

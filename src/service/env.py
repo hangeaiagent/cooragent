@@ -27,7 +27,7 @@ CODE_API_KEY = os.getenv("CODE_API_KEY")
 CODE_BASE_URL = os.getenv("CODE_BASE_URL")
 CODE_MODEL = os.getenv("CODE_MODEL")
 
-USR_AGENT = eval(os.getenv("USR_AGENT", "True"))
+USR_AGENT = os.getenv("USR_AGENT", "True")
 MCP_AGENT = eval(os.getenv("MCP_AGENT", "False"))
 USE_MCP_TOOLS = eval(os.getenv("USE_MCP_TOOLS", "True"))
 USE_BROWSER = eval(os.getenv("USE_BROWSER", "False"))
