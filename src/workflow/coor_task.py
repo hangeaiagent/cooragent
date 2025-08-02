@@ -415,7 +415,7 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
                     "agent_name": agent_name,
                 },
                 goto="publisher",
-            )
+    )
         _agent = agent_manager.available_agents[agent_name]
     else:
         # 如果是对象，直接使用

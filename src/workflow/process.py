@@ -17,6 +17,7 @@ from src.utils.chinese_names import (
     format_agent_progress_log,
     get_agent_chinese_name
 )
+import re
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,6 +30,36 @@ console = Console()
 def enable_debug_logging():
     """Enable debug level logging for more detailed execution information."""
     logging.getLogger("src").setLevel(logging.DEBUG)
+
+
+def is_travel_related_task(messages: list) -> bool:
+    """检测是否为旅游相关任务"""
+    travel_keywords = [
+        "旅游", "旅行", "出行", "度假", "行程", "景点", "机票", "酒店", 
+        "住宿", "预订", "攻略", "自由行", "跟团", "导游", "门票",
+        "新疆", "西藏", "云南", "海南", "北京", "上海", "成都", "杭州"
+    ]
+    
+    # 合并所有消息内容
+    content = " ".join([msg.get("content", "") if isinstance(msg, dict) else str(msg) for msg in messages])
+    
+    # 检查是否包含旅游关键词
+    travel_score = sum(1 for keyword in travel_keywords if keyword in content)
+    
+    # 检查是否包含明确的旅游规划要素
+    has_dates = bool(re.search(r'\d{4}-\d{2}-\d{2}|[1-9]\d*天|[1-9]\d*日', content))
+    has_budget = bool(re.search(r'预算|费用|花费|多少钱|\d+元', content))
+    has_travelers = bool(re.search(r'[1-9]\d*人|一家|夫妻|情侣|朋友', content))
+    
+    planning_elements = sum([has_dates, has_budget, has_travelers])
+    
+    # 判断逻辑：包含旅游关键词 或 包含多个规划要素
+    is_travel = travel_score >= 1 or planning_elements >= 2
+    
+    if is_travel:
+        logger.info(f"🎯 检测到旅游任务: 关键词匹配={travel_score}, 规划要素={planning_elements}")
+    
+    return is_travel
 
 
 logger = logging.getLogger(__name__)
@@ -202,6 +233,115 @@ async def _process_workflow(
     current_node = None
 
     workflow_id = initial_state["workflow_id"]
+    
+    # 检测是否为旅游任务
+    user_messages = initial_state.get("messages", [])
+    if is_travel_related_task(user_messages):
+        logger.info("🎯 检测到旅游任务，启动旅游专用协调器")
+        
+        # 输出旅游工作流开始日志
+        travel_workflow_start_log = generate_chinese_log(
+            "travel_workflow_start", 
+            "🧳 启动旅游专用智能体工作流",
+            workflow_id=workflow_id,
+            user_query=initial_state.get("USER_QUERY", "")[:150]
+        )
+        logger.info(f"中文日志: {travel_workflow_start_log['data']['message']}")
+        
+        yield {
+            "event": "travel_workflow_start",
+            "data": {"workflow_id": workflow_id, "message": "启动旅游专用工作流"},
+        }
+        
+        # 导入和调用TravelCoordinator
+        try:
+            from src.workflow.travel_coordinator import TravelCoordinator
+            
+            # 创建TravelCoordinator实例
+            travel_coordinator = TravelCoordinator()
+            
+            # 构建State对象
+            state = State({
+                "messages": user_messages,
+                "user_id": initial_state.get("user_id"),
+                "workflow_id": workflow_id
+            })
+            
+            # 调用旅游协调器
+            logger.info("🧳 调用TravelCoordinator进行旅游请求分析")
+            command = await travel_coordinator.coordinate_travel_request(state)
+            
+            yield {
+                "event": "travel_coordinator_complete",
+                "data": {
+                    "workflow_id": workflow_id,
+                    "routing_decision": command.goto,
+                    "analysis": command.update if hasattr(command, 'update') else {}
+                },
+            }
+            
+            # 如果是简单查询，直接返回结果
+            if command.goto == "__end__":
+                analysis = command.update.get("travel_analysis", {}) if hasattr(command, 'update') else {}
+                
+                # 生成简单查询响应
+                simple_response = f"""
+# 旅游信息查询结果
+
+## 目的地：{analysis.get('destination', '未识别')}
+**区域分类**: {analysis.get('region', '未知')}
+
+根据您的查询，我为您提供以下信息：
+
+### 基础信息
+- 目的地：{analysis.get('destination', '未识别')}
+- 地理区域：{'中国境内' if analysis.get('region') == 'china' else '国际目的地' if analysis.get('region') == 'international' else '未确定'}
+
+### 建议
+如果您需要详细的旅游规划，请提供：
+1. 出行时间（具体日期）
+2. 出行人数
+3. 预算范围
+4. 旅行偏好
+
+这样我可以为您制定更详细的旅游计划。
+"""
+                
+                yield {
+                    "event": "workflow_complete",
+                    "data": {
+                        "workflow_id": workflow_id,
+                        "result": simple_response,
+                        "type": "simple_travel_query"
+                    },
+                }
+                return
+            
+            # 如果是复杂规划，继续执行标准工作流，但注入旅游上下文
+            elif command.goto == "planner":
+                if hasattr(command, 'update') and 'travel_context' in command.update:
+                    travel_context = command.update['travel_context']
+                    
+                    # 将旅游上下文注入到initial_state
+                    initial_state['travel_context'] = travel_context
+                    initial_state['is_travel_task'] = True
+                    
+                    logger.info(f"🧳 旅游上下文已注入: 出发地={travel_context.get('departure')}, 目的地={travel_context.get('destination')}, 区域={travel_context.get('region')}")
+                    
+                    yield {
+                        "event": "travel_context_injected", 
+                        "data": {
+                            "workflow_id": workflow_id,
+                            "travel_context": travel_context
+                        },
+                    }
+        
+        except Exception as e:
+            logger.error(f"TravelCoordinator调用失败: {e}", exc_info=True)
+            yield {
+                "event": "travel_coordinator_error",
+                "data": {"workflow_id": workflow_id, "error": str(e)},
+            }
     
     # 输出工作流开始中文日志
     workflow_start_log = generate_chinese_log(

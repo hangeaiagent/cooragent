@@ -62,6 +62,8 @@ class GeneratorServer:
         self.port = port
         self.generator = EnhancedCooragentProjectGenerator()
         self.generation_tasks: Dict[str, GenerationStatus] = {}
+        self.output_dir = Path("generated_projects")
+        self.output_dir.mkdir(exist_ok=True)
         
         # 创建FastAPI应用
         self.app = FastAPI(
@@ -99,32 +101,59 @@ class GeneratorServer:
         
         @self.app.post("/api/generate", response_model=GenerateResponse)
         async def generate_code(request: GenerateRequest, background_tasks: BackgroundTasks):
-            """生成基于Cooragent的项目代码"""
+            """生成基于Cooragent的项目代码或执行旅游规划"""
             task_id = str(uuid.uuid4())
             user_id = request.user_id or f"user_{task_id[:8]}"
             
-            logger.info(f"收到代码生成请求: {request.content[:100]}...")
+            logger.info(f"收到请求: {request.content[:100]}...")
             
-            # 记录任务状态
-            task_status = GenerationStatus(
-                task_id=task_id,
-                status="processing",
-                message="正在分析需求并启动Cooragent多智能体工作流...",
-                created_at=datetime.now(),
-                current_step="任务初始化",
-                step_details="正在准备Cooragent环境和智能体团队",
-                progress=5
-            )
-            self.generation_tasks[task_id] = task_status
+            # 检测是否为旅游相关任务
+            from src.workflow.process import is_travel_related_task
+            messages = [{"content": request.content}]
+            is_travel = is_travel_related_task(messages)
             
-            background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
-            
-            response = GenerateResponse(
-                task_id=task_id,
-                status="processing",
-                message="代码生成已开始，基于Cooragent多智能体架构进行协作分析",
-                created_at=datetime.now()
-            )
+            if is_travel:
+                # 旅游规划任务
+                task_status = GenerationStatus(
+                    task_id=task_id,
+                    status="processing",
+                    message="正在分析旅游需求并启动智能旅游规划...",
+                    created_at=datetime.now(),
+                    current_step="旅游任务初始化",
+                    step_details="检测到旅游规划任务，启动TravelCoordinator",
+                    progress=5
+                )
+                self.generation_tasks[task_id] = task_status
+                
+                background_tasks.add_task(self._run_travel_planning, task_id, request.content, user_id)
+                
+                response = GenerateResponse(
+                    task_id=task_id,
+                    status="processing",
+                    message="旅游规划已开始，基于智能旅游协调器进行分析",
+                    created_at=datetime.now()
+                )
+            else:
+                # 代码生成任务
+                task_status = GenerationStatus(
+                    task_id=task_id,
+                    status="processing",
+                    message="正在分析需求并启动Cooragent多智能体工作流...",
+                    created_at=datetime.now(),
+                    current_step="任务初始化",
+                    step_details="正在准备Cooragent环境和智能体团队",
+                    progress=5
+                )
+                self.generation_tasks[task_id] = task_status
+                
+                background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
+                
+                response = GenerateResponse(
+                    task_id=task_id,
+                    status="processing",
+                    message="代码生成已开始，基于Cooragent多智能体架构进行协作分析",
+                    created_at=datetime.now()
+                )
             
             return response
         
@@ -338,6 +367,224 @@ class GeneratorServer:
             task.step_details = f"详细错误信息: {str(e)}"
             
             logger.error(f"代码生成失败 {task_id}: {e}", exc_info=True)
+    
+    async def _run_travel_planning(self, task_id: str, content: str, user_id: str):
+        """运行旅游规划任务"""
+        task = self.generation_tasks[task_id]
+        
+        # 定义进度更新回调函数
+        async def update_progress(message: str, progress: int, current_step: str, step_details: str):
+            task.message = message
+            task.progress = progress
+            task.current_step = current_step
+            task.step_details = step_details
+            logger.info(f"[{task_id[:8]}] {current_step}: {message}")
+        
+        try:
+            logger.info(f"开始旅游规划任务 {task_id}: {content[:100]}...")
+            
+            # 初始状态
+            task.status = "processing"
+            
+            await update_progress(
+                "正在启动旅游智能协调器...", 
+                10, 
+                "TravelCoordinator启动", 
+                "初始化地理检测器和任务分类器"
+            )
+            
+            # 导入和调用TravelCoordinator
+            from src.workflow.travel_coordinator import TravelCoordinator
+            from src.interface.agent import State
+            
+            # 创建TravelCoordinator实例
+            travel_coordinator = TravelCoordinator()
+            
+            # 构建消息和状态
+            messages = [{"role": "user", "content": content}]
+            state = State({
+                "messages": messages,
+                "user_id": user_id,
+                "task_id": task_id
+            })
+            
+            await update_progress(
+                "正在分析旅游需求...", 
+                20, 
+                "需求分析", 
+                "地理位置识别、复杂度分析、MCP工具选择"
+            )
+            
+            # 调用旅游协调器
+            command = await travel_coordinator.coordinate_travel_request(state)
+            
+            # 根据协调器的决策执行不同的处理
+            if command.goto == "__end__":
+                # 简单查询，直接返回结果
+                analysis = command.update.get("travel_analysis", {}) if hasattr(command, 'update') else {}
+                
+                await update_progress(
+                    "生成简单查询响应...", 
+                    80, 
+                    "简单查询处理", 
+                    f"目的地: {analysis.get('destination', '未识别')}, 区域: {analysis.get('region', '未知')}"
+                )
+                
+                # 生成简单查询响应
+                travel_result = f"""
+# 🏔️ 旅游信息查询结果
+
+## 📍 目的地分析
+- **目的地**: {analysis.get('destination', '未识别')}
+- **出发地**: {analysis.get('departure', '未指定')}
+- **地理区域**: {'🇨🇳 中国境内' if analysis.get('region') == 'china' else '🌍 国际目的地' if analysis.get('region') == 'international' else '❓ 未确定'}
+- **查询类型**: 简单信息查询
+
+## 💡 智能建议
+
+如果您需要**详细的旅游规划**，请提供以下信息：
+
+### 📅 出行时间
+- 具体出发日期和返回日期
+- 旅行总天数
+
+### 👥 出行人数
+- 成人数量
+- 儿童数量（如有）
+- 出行关系（家庭/朋友/情侣等）
+
+### 💰 预算信息
+- 总预算范围
+- 预算类型（经济型/舒适型/豪华型）
+
+### 🎯 旅行偏好
+- 旅行类型（自然风光/文化历史/美食体验/购物娱乐等）
+- 住宿要求
+- 交通偏好
+
+### 📝 特殊需求
+- 饮食限制
+- 身体状况考虑
+- 其他特殊要求
+
+**提供这些信息后，我将为您制定详细的个性化旅游计划！**
+"""
+                
+                # 生成临时文件
+                result_file = self.output_dir / f"travel_info_{task_id}.md"
+                result_file.write_text(travel_result, encoding='utf-8')
+                
+                task.zip_path = str(result_file)
+                
+            elif command.goto == "planner":
+                # 复杂规划，调用完整工作流
+                if hasattr(command, 'update') and 'travel_context' in command.update:
+                    travel_context = command.update['travel_context']
+                    
+                    await update_progress(
+                        "启动完整旅游规划工作流...", 
+                        30, 
+                        "复杂规划启动", 
+                        f"目的地: {travel_context.get('destination')}, MCP工具: {list(travel_context.get('mcp_config', {}).keys())}"
+                    )
+                    
+                    # 调用完整的工作流执行旅游规划
+                    from src.workflow.process import run_agent_workflow
+                    from src.interface.agent import TaskType
+                    
+                    # 注入旅游上下文到消息中
+                    enhanced_messages = messages.copy()
+                    enhanced_messages.append({
+                        "role": "system", 
+                        "content": f"旅游上下文: 出发地={travel_context.get('departure')}, 目的地={travel_context.get('destination')}, 区域={travel_context.get('region')}, 复杂度={travel_context.get('complexity')}, 推荐MCP工具={travel_context.get('mcp_config')}"
+                    })
+                    
+                    # 执行工作流
+                    workflow_results = []
+                    progress_step = 40
+                    
+                    async for event_data in run_agent_workflow(
+                        user_id=user_id,
+                        task_type=TaskType.AGENT_WORKFLOW,
+                        user_input_messages=enhanced_messages,
+                        debug=False,
+                        deep_thinking_mode=True,
+                        search_before_planning=True,
+                        workmode="launch"
+                    ):
+                        workflow_results.append(event_data)
+                        
+                        # 更新进度
+                        if event_data.get("event") == "start_of_agent":
+                            agent_name = event_data.get("data", {}).get("agent_name", "未知")
+                            progress_step = min(progress_step + 5, 85)
+                            await update_progress(
+                                f"执行 {agent_name} 智能体...", 
+                                progress_step, 
+                                "多智能体协作", 
+                                f"当前执行: {agent_name}"
+                            )
+                        elif event_data.get("event") == "workflow_complete":
+                            break
+                    
+                    # 处理工作流结果
+                    final_result = workflow_results[-1] if workflow_results else {}
+                    result_content = final_result.get("data", {}).get("result", "工作流执行完成，但未获得结果")
+                    
+                    # 生成结果文件
+                    result_file = self.output_dir / f"travel_plan_{task_id}.md"
+                    
+                    comprehensive_result = f"""
+# 🧳 详细旅游规划
+
+## 📋 规划概述
+- **任务ID**: {task_id}
+- **出发地**: {travel_context.get('departure', '未指定')}
+- **目的地**: {travel_context.get('destination', '未指定')}
+- **旅游区域**: {travel_context.get('region', '未知')}
+- **规划复杂度**: {travel_context.get('complexity', '标准')}
+
+## 🛠️ 使用的智能工具
+{chr(10).join([f"- **{tool}**: {config}" for tool, config in travel_context.get('mcp_config', {}).items()])}
+
+## 📝 详细规划内容
+
+{result_content}
+
+---
+
+**本旅游规划由Cooragent旅游智能体系统自动生成**  
+生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+"""
+                    
+                    result_file.write_text(comprehensive_result, encoding='utf-8')
+                    task.zip_path = str(result_file)
+                else:
+                    raise Exception("旅游上下文获取失败")
+            else:
+                raise Exception(f"未知的协调器决策: {command.goto}")
+            
+            # 更新状态：完成
+            task.status = "completed"
+            task.message = "🎉 旅游规划任务完成！"
+            task.progress = 100
+            task.completed_at = datetime.now()
+            task.current_step = "完成"
+            task.step_details = f"旅游规划结果已生成"
+            
+            logger.info(f"旅游规划任务完成 {task_id}")
+            
+        except Exception as e:
+            # 更新状态：失败
+            task.status = "failed"
+            task.message = f"旅游规划失败: {str(e)}"
+            task.progress = 0
+            task.error_details = str(e)
+            task.completed_at = datetime.now()
+            task.current_step = "错误"
+            task.step_details = f"详细错误信息: {str(e)}"
+            
+            logger.error(f"旅游规划失败 {task_id}: {e}", exc_info=True)
     
     def _setup_background_tasks(self):
         """设置后台任务"""
@@ -935,6 +1182,25 @@ class GeneratorServer:
             <div class="max-w-4xl mx-auto mb-8">
                 <div class="result-card rounded-lg p-6 shadow-xl">
                     <form id="planningForm" class="space-y-6">
+                        <!-- 新增：自由文本输入区域 -->
+                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-robot text-yellow-600 mr-2"></i>
+                                <label class="block text-gray-700 font-semibold">
+                                    🧪 TravelCoordinator测试模式（可选）
+                                </label>
+                            </div>
+                            <div class="text-sm text-yellow-700 mb-3">
+                                <p>💡 <strong>提示：</strong>使用此文本框可以直接测试TravelCoordinator的智能分析功能。</p>
+                                <p>📝 <strong>示例：</strong>"北京有什么好玩的？" 或 "帮我制定从北京到新疆的28天旅游计划"</p>
+                            </div>
+                            <textarea id="freeTextInput" class="w-full p-3 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-yellow-50" rows="3" placeholder="在此输入任何旅游相关的问题或需求..."></textarea>
+                            <div class="text-xs text-yellow-600 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                使用此模式时，下方的表单字段将变为可选，方便快速测试各种输入。
+                            </div>
+                        </div>
+                        
                         <div class="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
@@ -1065,21 +1331,67 @@ class GeneratorServer:
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('startDate').valueAsDate = today; 
             document.getElementById('endDate').valueAsDate = tomorrow;
+            
+            // 新增：自由文本输入框交互
+            const freeTextInput = document.getElementById('freeTextInput');
+            const formFields = ['departure', 'destination', 'startDate', 'endDate', 'travelers', 'budget', 'preference'];
+            
+            // 当用户在自由文本框输入时，移除其他字段的required属性
+            freeTextInput.addEventListener('input', function() {
+                const hasText = this.value.trim().length > 0;
+                formFields.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (hasText) {
+                        field.removeAttribute('required');
+                        field.style.opacity = '0.7';
+                    } else {
+                        field.setAttribute('required', 'required');
+                        field.style.opacity = '1';
+                    }
+                });
+            });
+            
+            // 当用户在表单字段输入时，提示可能要清空自由文本框
+            formFields.forEach(fieldId => {
+                document.getElementById(fieldId).addEventListener('input', function() {
+                    if (freeTextInput.value.trim().length > 0 && this.value.trim().length > 0) {
+                        // 可以添加一个温和的提示
+                        console.log('提示：同时使用表单和自由文本时，将优先使用自由文本内容');
+                    }
+                });
+            });
         });
 
         document.getElementById('planningForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const departure = document.getElementById('departure').value;
-            const destination = document.getElementById('destination').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const travelers = document.getElementById('travelers').value;
-            const budget = document.getElementById('budget').value;
-            const preference = document.getElementById('preference').value;
-            const specialRequests = document.getElementById('specialRequests').value;
+            // 检查是否使用了自由文本输入
+            const freeTextInput = document.getElementById('freeTextInput').value.trim();
+            
+            let requestText;
+            
+            if (freeTextInput) {
+                // 如果使用自由文本输入，直接使用该内容
+                requestText = freeTextInput;
+                console.log('🧪 使用TravelCoordinator测试模式:', freeTextInput);
+            } else {
+                // 原有的表单验证和内容构建逻辑
+                const departure = document.getElementById('departure').value;
+                const destination = document.getElementById('destination').value;
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const travelers = document.getElementById('travelers').value;
+                const budget = document.getElementById('budget').value;
+                const preference = document.getElementById('preference').value;
+                const specialRequests = document.getElementById('specialRequests').value;
 
-            const requestText = `请帮我制定从${departure}到${destination}的旅游计划。
+                // 只有在非自由文本模式下才进行必填验证
+                if (!departure || !destination || !startDate || !endDate) {
+                    alert('请填写完整的出发地、目的地和出行时间');
+                    return;
+                }
+
+                requestText = `请帮我制定从${departure}到${destination}的旅游计划。
 出行时间：${startDate} 至 ${endDate}
 出行人数：${travelers}
 预算范围：${budget}
@@ -1093,6 +1405,7 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
 4. 美食推荐
 5. 详细预算分析
 6. 旅行贴士和注意事项`;
+            }
 
             try { 
                 showProgress(); 
