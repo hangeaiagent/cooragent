@@ -644,19 +644,62 @@ class EnhancedCooragentProjectGenerator:
         agents_dir = get_project_root() / "store" / "agents"
         prompts_dir = get_project_root() / "store" / "prompts"
         
-        logger.info(f"从 {agents_dir} 加载智能体配置...")
+        logger.info(f"🔍 [智能体分析] 开始从 {agents_dir} 加载智能体配置...")
+        logger.info(f"🎯 [智能体分析] 目标用户ID: {user_id}")
         
-        for agent_file in agents_dir.glob("*.json"):
+        # 列出所有智能体文件
+        all_agent_files = list(agents_dir.glob("*.json"))
+        logger.info(f"📂 [智能体分析] 发现 {len(all_agent_files)} 个智能体配置文件")
+        
+        # 详细分析每个智能体文件
+        user_agents_found = []
+        all_agents_info = []
+        
+        for agent_file in all_agent_files:
             try:
                 async with aiofiles.open(agent_file, "r", encoding="utf-8") as f:
                     agent_data = json.loads(await f.read())
                 
-                # 只收集属于该用户的智能体
-                if agent_data.get("user_id") == user_id:
+                file_user_id = agent_data.get("user_id", "未设置")
+                agent_name = agent_data.get("agent_name", "未设置")
+                agent_description = agent_data.get("agent_description", "无描述")[:50]
+                
+                all_agents_info.append({
+                    "file": agent_file.name,
+                    "agent_name": agent_name,
+                    "user_id": file_user_id,
+                    "description": agent_description
+                })
+                
+                logger.info(f"📋 [智能体分析] 文件: {agent_file.name}")
+                logger.info(f"   ├─ 智能体名称: {agent_name}")
+                logger.info(f"   ├─ 用户ID: {file_user_id}")
+                logger.info(f"   ├─ 描述: {agent_description}")
+                logger.info(f"   └─ 匹配目标用户: {'✅ 是' if file_user_id == user_id else '❌ 否'}")
+                
+                # 智能匹配用户智能体
+                is_match = False
+                match_reason = ""
+                
+                # 精确匹配
+                if file_user_id == user_id:
+                    is_match = True
+                    match_reason = "精确匹配"
+                # 旅游用户模糊匹配：travel_user_123456 匹配 travel_user
+                elif user_id.startswith("travel_user_") and file_user_id == "travel_user":
+                    is_match = True
+                    match_reason = "旅游用户模糊匹配"
+                # 测试用户匹配：travel_user_123456 匹配 travel_test  
+                elif user_id.startswith("travel_user_") and file_user_id == "travel_test":
+                    is_match = True
+                    match_reason = "测试用户匹配"
+                
+                if is_match:
                     agent = Agent.model_validate(agent_data)
                     agents.append(agent)
+                    user_agents_found.append(agent_name)
                     
-                    logger.info(f"找到用户智能体: {agent.agent_name}")
+                    logger.info(f"✅ [智能体分析] 成功加载用户智能体: {agent.agent_name} ({match_reason})")
                     
                     # 收集使用的工具
                     for tool in agent.selected_tools:
@@ -669,11 +712,27 @@ class EnhancedCooragentProjectGenerator:
                             prompts[agent.agent_name] = await f.read()
                     
             except Exception as e:
-                logger.warning(f"Failed to load agent from {agent_file}: {e}")
+                logger.warning(f"❌ [智能体分析] 加载智能体文件失败 {agent_file}: {e}")
+        
+        # 输出完整的智能体分析报告
+        logger.info(f"📊 [智能体分析] 完整智能体列表:")
+        for i, info in enumerate(all_agents_info, 1):
+            logger.info(f"   {i}. {info['agent_name']} (用户: {info['user_id']}) - {info['description']}")
+        
+        logger.info(f"🎯 [智能体分析] 目标用户 '{user_id}' 的智能体:")
+        if user_agents_found:
+            for agent_name in user_agents_found:
+                logger.info(f"   ✅ {agent_name}")
+        else:
+            logger.info(f"   ❌ 未找到任何匹配的智能体")
         
         # 如果没有找到用户特定的智能体，使用默认配置
         if not agents:
-            logger.warning(f"未找到用户 {user_id} 的专属智能体，使用默认配置")
+            logger.warning(f"⚠️ [智能体分析] 未找到用户 {user_id} 的专属智能体，使用默认配置")
+            logger.warning(f"💡 [智能体分析] 可能的原因:")
+            logger.warning(f"   1. 用户 {user_id} 从未创建过专属智能体")
+            logger.warning(f"   2. 智能体文件中的user_id字段与当前用户ID不匹配")
+            logger.warning(f"   3. 智能体文件损坏或格式错误")
             
             # 添加一些默认智能体
             default_agents = ["researcher", "coder", "reporter"]

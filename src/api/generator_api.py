@@ -7,9 +7,11 @@
 import asyncio
 import logging
 import uuid
+import json
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Union
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +24,46 @@ from src.service.server import Server
 from src.generator.cooragent_generator import EnhancedCooragentProjectGenerator
 from src.utils.path_utils import get_project_root
 
+# 配置统一的日志输出到文件
+def setup_application_logger():
+    """设置应用日志，输出到 logs/generator.log"""
+    # 创建logs目录
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # 配置根日志记录器
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # 清除现有handlers避免重复
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # 创建文件handler
+    file_handler = logging.FileHandler("logs/generator.log", encoding='utf-8', mode='a')
+    file_handler.setLevel(logging.INFO)
+    
+    # 创建控制台handler（可选，用于调试）
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)  # 只显示WARNING及以上级别到控制台
+    
+    # 创建formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # 添加handlers
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    return root_logger
+
+# 初始化日志配置
+setup_application_logger()
 logger = logging.getLogger(__name__)
 
 # API模型定义
@@ -114,8 +156,11 @@ class GeneratorServer:
             
             if is_travel:
                 # 旅游规划任务
+                logger.info(f"🧳 [请求分析] 识别为旅游规划任务 - user_id: {user_id}, task_id: {task_id}")
+                logger.info(f"🧳 [请求分析] 请求内容: {request.content}")
+                
                 task_status = GenerationStatus(
-                    task_id=task_id,
+                task_id=task_id,
                     status="processing",
                     message="正在分析旅游需求并启动智能旅游规划...",
                     created_at=datetime.now(),
@@ -135,25 +180,28 @@ class GeneratorServer:
                 )
             else:
                 # 代码生成任务
+                logger.info(f"🔧 [请求分析] 识别为代码生成任务 - user_id: {user_id}, task_id: {task_id}")
+                logger.info(f"🔧 [请求分析] 请求内容: {request.content}")
+                
                 task_status = GenerationStatus(
-                    task_id=task_id,
-                    status="processing",
+                task_id=task_id,
+                status="processing",
                     message="正在分析需求并启动Cooragent多智能体工作流...",
-                    created_at=datetime.now(),
-                    current_step="任务初始化",
-                    step_details="正在准备Cooragent环境和智能体团队",
-                    progress=5
-                )
-                self.generation_tasks[task_id] = task_status
-                
-                background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
-                
-                response = GenerateResponse(
-                    task_id=task_id,
-                    status="processing",
+                created_at=datetime.now(),
+                current_step="任务初始化",
+                step_details="正在准备Cooragent环境和智能体团队",
+                progress=5
+            )
+            self.generation_tasks[task_id] = task_status
+            
+            background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
+            
+            response = GenerateResponse(
+                task_id=task_id,
+                status="processing",
                     message="代码生成已开始，基于Cooragent多智能体架构进行协作分析",
-                    created_at=datetime.now()
-                )
+                created_at=datetime.now()
+            )
             
             return response
         
@@ -416,12 +464,18 @@ class GeneratorServer:
             )
             
             # 调用旅游协调器
+            logger.info(f"🔄 正在调用TravelCoordinator处理: {content}")
             command = await travel_coordinator.coordinate_travel_request(state)
+            logger.info(f"📋 TravelCoordinator返回结果: goto={command.goto}, update_keys={list(command.update.keys()) if hasattr(command, 'update') else 'None'}")
+            if hasattr(command, 'update'):
+                logger.info(f"📊 返回的update内容: {command.update}")
             
             # 根据协调器的决策执行不同的处理
             if command.goto == "__end__":
                 # 简单查询，直接返回结果
+                logger.info("🎯 进入简单查询处理分支")
                 analysis = command.update.get("travel_analysis", {}) if hasattr(command, 'update') else {}
+                logger.info(f"📊 提取的travel_analysis: {analysis}")
                 
                 await update_progress(
                     "生成简单查询响应...", 
@@ -477,79 +531,37 @@ class GeneratorServer:
                 task.zip_path = str(result_file)
                 
             elif command.goto == "planner":
-                # 复杂规划，调用完整工作流
-                if hasattr(command, 'update') and 'travel_context' in command.update:
-                    travel_context = command.update['travel_context']
-                    
+                # 复杂规划，直接使用TravelCoordinator生成的详细计划
+                logger.info("🎯 进入复杂规划处理分支")
+                travel_result = command.update.get("travel_result", {}) if hasattr(command, 'update') else {}
+                logger.info(f"📊 提取的travel_result: {travel_result}")
+                
+                if travel_result:
                     await update_progress(
-                        "启动完整旅游规划工作流...", 
-                        30, 
-                        "复杂规划启动", 
-                        f"目的地: {travel_context.get('destination')}, MCP工具: {list(travel_context.get('mcp_config', {}).keys())}"
+                        "生成详细旅游规划...", 
+                        80, 
+                        "复杂规划处理", 
+                        f"目的地: {travel_result.get('destination', '未指定')}, 天数: {travel_result.get('total_days', 'N/A')}"
                     )
                     
-                    # 调用完整的工作流执行旅游规划
-                    from src.workflow.process import run_agent_workflow
-                    from src.interface.agent import TaskType
-                    
-                    # 注入旅游上下文到消息中
-                    enhanced_messages = messages.copy()
-                    enhanced_messages.append({
-                        "role": "system", 
-                        "content": f"旅游上下文: 出发地={travel_context.get('departure')}, 目的地={travel_context.get('destination')}, 区域={travel_context.get('region')}, 复杂度={travel_context.get('complexity')}, 推荐MCP工具={travel_context.get('mcp_config')}"
-                    })
-                    
-                    # 执行工作流
-                    workflow_results = []
-                    progress_step = 40
-                    
-                    async for event_data in run_agent_workflow(
-                        user_id=user_id,
-                        task_type=TaskType.AGENT_WORKFLOW,
-                        user_input_messages=enhanced_messages,
-                        debug=False,
-                        deep_thinking_mode=True,
-                        search_before_planning=True,
-                        workmode="launch"
-                    ):
-                        workflow_results.append(event_data)
-                        
-                        # 更新进度
-                        if event_data.get("event") == "start_of_agent":
-                            agent_name = event_data.get("data", {}).get("agent_name", "未知")
-                            progress_step = min(progress_step + 5, 85)
-                            await update_progress(
-                                f"执行 {agent_name} 智能体...", 
-                                progress_step, 
-                                "多智能体协作", 
-                                f"当前执行: {agent_name}"
-                            )
-                        elif event_data.get("event") == "workflow_complete":
-                            break
-                    
-                    # 处理工作流结果
-                    final_result = workflow_results[-1] if workflow_results else {}
-                    result_content = final_result.get("data", {}).get("result", "工作流执行完成，但未获得结果")
-                    
-                    # 生成结果文件
-                    result_file = self.output_dir / f"travel_plan_{task_id}.md"
-                    
+                    # 直接使用TravelCoordinator生成的详细计划
                     comprehensive_result = f"""
 # 🧳 详细旅游规划
 
 ## 📋 规划概述
 - **任务ID**: {task_id}
-- **出发地**: {travel_context.get('departure', '未指定')}
-- **目的地**: {travel_context.get('destination', '未指定')}
-- **旅游区域**: {travel_context.get('region', '未知')}
-- **规划复杂度**: {travel_context.get('complexity', '标准')}
+- **出发地**: {travel_result.get('departure', '未指定')}
+- **目的地**: {travel_result.get('destination', '未指定')}
+- **旅游区域**: {travel_result.get('region', '未知')}
+- **总天数**: {travel_result.get('total_days', 'N/A')}
+- **预算范围**: {travel_result.get('budget_range', '未指定')}
 
-## 🛠️ 使用的智能工具
-{chr(10).join([f"- **{tool}**: {config}" for tool, config in travel_context.get('mcp_config', {}).items()])}
+## 🛠️ 智能工具配置
+{chr(10).join([f"- **{tool}**: {config}" for tool, config in travel_result.get('mcp_config', {}).items()])}
 
-## 📝 详细规划内容
+## 📝 详细行程安排
 
-{result_content}
+{travel_result.get('detailed_plan', '暂无详细规划内容')}
 
 ---
 
@@ -557,10 +569,12 @@ class GeneratorServer:
 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
                     
+                    # 生成结果文件
+                    result_file = self.output_dir / f"travel_plan_{task_id}.md"
                     result_file.write_text(comprehensive_result, encoding='utf-8')
                     task.zip_path = str(result_file)
                 else:
-                    raise Exception("旅游上下文获取失败")
+                    raise Exception("详细旅游规划生成失败")
             else:
                 raise Exception(f"未知的协调器决策: {command.goto}")
             
@@ -1451,30 +1465,86 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
                         try {
                             const downloadResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
                             if (downloadResponse.ok) {
-                                // 显示生成完成的消息，但现在显示示例结果
+                                // 获取实际的响应内容
+                                const actualResult = await downloadResponse.text();
+                                console.log('✅ 获取到实际结果:', actualResult.substring(0, 200) + '...');
                                 setTimeout(() => { 
-                                    showResult(generateSampleResult()); 
+                                    showResult(actualResult);  // 显示真实结果
                                     hideProgress(); 
                                 }, 1000);
                             } else {
-                                throw new Error('无法获取生成结果');
+                                // 处理HTTP错误
+                                const errorText = await downloadResponse.text();
+                                throw new Error(`服务器错误 (${downloadResponse.status}): ${errorText}`);
                             }
                         } catch (error) {
-                            console.warn('获取实际结果失败，显示示例结果:', error);
-                            setTimeout(() => { 
-                                showResult(generateSampleResult()); 
-                                hideProgress(); 
-                            }, 1000);
+                            console.error('❌ 获取结果失败:', error);
+                            hideProgress();
+                            // 显示错误信息而不是假数据
+                            showResult(`
+                                <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee; margin: 20px 0;">
+                                    <h3>❌ 获取结果失败</h3>
+                                    <p><strong>错误详情:</strong> ${error.message}</p>
+                                    <p><strong>可能原因:</strong></p>
+                                    <ul>
+                                        <li>后端服务异常或超时</li>
+                                        <li>网络连接问题</li>
+                                        <li>任务执行失败</li>
+                                    </ul>
+                                    <p><strong>建议操作:</strong></p>
+                                    <ul>
+                                        <li>检查浏览器控制台获取详细错误信息</li>
+                                        <li>刷新页面重新尝试</li>
+                                        <li>联系技术支持</li>
+                                    </ul>
+                                </div>
+                            `);
                         }
                     } else if (data.status === 'failed') { 
                         clearInterval(pollInterval); 
-                        throw new Error(data.error || '生成失败'); 
+                        hideProgress();
+                        // 显示后端失败信息
+                        showResult(`
+                            <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee; margin: 20px 0;">
+                                <h3>❌ 任务执行失败</h3>
+                                <p><strong>错误信息:</strong> ${data.message || '未知错误'}</p>
+                                <p><strong>错误详情:</strong> ${data.error_details || '无详细信息'}</p>
+                                ${data.current_step ? `<p><strong>失败步骤:</strong> ${data.current_step}</p>` : ''}
+                                ${data.step_details ? `<p><strong>步骤详情:</strong> ${data.step_details}</p>` : ''}
+                                <p><strong>任务ID:</strong> ${taskId}</p>
+                                <hr style="margin: 15px 0;">
+                                <p><strong>解决建议:</strong></p>
+                                <ul>
+                                    <li>检查输入参数是否正确</li>
+                                    <li>尝试简化查询内容</li>
+                                    <li>等待一段时间后重新尝试</li>
+                                    <li>如问题持续，请联系技术支持并提供任务ID</li>
+                                </ul>
+                            </div>
+                        `);
                     }
                 } catch (error) { 
                     clearInterval(pollInterval); 
-                    console.error('轮询状态失败:', error); 
+                    console.error('❌ 轮询状态失败:', error); 
                     hideProgress(); 
-                    alert('获取状态失败: ' + error.message); 
+                    showResult(`
+                        <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee; margin: 20px 0;">
+                            <h3>❌ 状态查询失败</h3>
+                            <p><strong>错误详情:</strong> ${error.message}</p>
+                            <p><strong>可能原因:</strong></p>
+                            <ul>
+                                <li>网络连接中断</li>
+                                <li>后端服务不可用</li>
+                                <li>请求超时</li>
+                            </ul>
+                            <p><strong>建议操作:</strong></p>
+                            <ul>
+                                <li>检查网络连接</li>
+                                <li>刷新页面重新尝试</li>
+                                <li>检查后端服务状态</li>
+                            </ul>
+                        </div>
+                    `);
                 }
             }, 2000);
         }
@@ -1654,6 +1724,6 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
 
 # 创建全局应用实例
 generator_server = GeneratorServer()
-app = generator_server.app
+app = generator_server.app 
 
  

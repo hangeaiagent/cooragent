@@ -500,8 +500,8 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
             agent.ainvoke(state, config=config),
             timeout=300  # 5分钟超时
         )
-        
-        # 智能体执行完成日志
+    
+    # 智能体执行完成日志
         agent_execution_complete_log = generate_chinese_log(
             "agent_execution_complete",
             f"✅ 智能体任务执行完成: {agent_name}",
@@ -513,16 +513,16 @@ async def agent_proxy_node(state: State) -> Command[Literal["publisher", "__end_
         logger.info(f"中文日志: {agent_execution_complete_log['data']['message']}")
 
     except asyncio.TimeoutError:
-        logger.error(f"智能体 {agent_name} 执行超时")
-        return Command(
-            update={
-                "messages": [
-                    {
-                        "content": f"⏰ 智能体 {agent_name} 执行超时，请重试或简化需求",
-                        "tool": state["next"],
-                        "role": "assistant",
-                    }
-                ],
+            logger.error(f"智能体 {agent_name} 执行超时")
+            return Command(
+                update={
+                    "messages": [
+                        {
+                            "content": f"⏰ 智能体 {agent_name} 执行超时，请重试或简化需求",
+                            "tool": state["next"],
+                            "role": "assistant",
+                        }
+                    ],
                 "processing_agent_name": agent_name,
                 "agent_name": agent_name,
             },

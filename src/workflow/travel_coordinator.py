@@ -4,12 +4,13 @@
 提供地理感知和旅游任务智能分类功能，实现旅游请求的智能路由决策。
 """
 
-import logging
 import re
-from typing import Dict, Any, List, Tuple, Optional
+import logging
+from typing import Dict, List, Tuple, Optional, Any, Set
 from src.interface.agent import State
 from langgraph.types import Command
 
+# 使用统一的日志器
 logger = logging.getLogger(__name__)
 
 
@@ -219,6 +220,11 @@ class TravelCoordinator:
             if not messages:
                 logger.warning("没有找到消息内容")
                 return Command(goto="__end__")
+            
+            # 添加详细日志来调试消息内容
+            logger.info(f"📝 收到的messages数量: {len(messages)}")
+            for i, msg in enumerate(messages):
+                logger.info(f"📝 消息[{i}]: role={msg.get('role', 'unknown')}, content='{msg.get('content', '')[:100]}'")
             
             # 1. 地理位置识别
             departure, destination = self.geo_detector.extract_locations(messages)
