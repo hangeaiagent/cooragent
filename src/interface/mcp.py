@@ -4,9 +4,14 @@ from typing import (
     Any,
     Generic,
     Literal,
-    TypeAlias,
     TypeVar,
 )
+
+try:
+    from typing import TypeAlias
+except ImportError:
+    # Python < 3.10
+    from typing_extensions import TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, FileUrl, RootModel
 from pydantic.networks import AnyUrl, UrlConstraints

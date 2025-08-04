@@ -470,15 +470,113 @@ class GeneratorServer:
                 "user_id": user_id,
                 "task_id": task_id
             })
+            
+            # 检测是否为简单查询
+            simple_query_keywords = [
+                "有什么好玩的", "好玩吗", "怎么样", "如何", "怎么", "什么", "哪里", "推荐", 
+                "介绍", "简介", "概况", "特色", "美食", "景点", "文化", "历史", "天气",
+                "什么时候", "季节", "最佳", "适合", "值得", "必去", "著名", "热门"
+            ]
+            
+            is_simple_query = any(keyword in content for keyword in simple_query_keywords)
+            
+            if is_simple_query:
+                # 简单查询，直接使用大模型回复
+                logger.info("🎯 检测到简单查询，直接使用大模型回复")
+                
+                await update_progress(
+                    "正在使用大模型分析问题...", 
+                    30, 
+                    "大模型分析", 
+                    "直接调用大模型回答用户问题"
+                )
+                
+                # 导入大模型服务
+                from src.llm.llm import get_llm_client
+                
+                try:
+                    llm_client = get_llm_client()
+                    
+                    # 构建提示词
+                    prompt = f"""你是一个专业的旅游顾问，请根据用户的问题提供详细、准确的回答。
+
+用户问题：{content}
+
+请提供：
+1. 直接回答用户的具体问题
+2. 相关的旅游信息和建议
+3. 如果用户需要更详细的旅游规划，请提醒他们提供更多信息
+
+请用中文回答，格式要清晰易读。"""
+
+                    await update_progress(
+                        "正在生成回答...", 
+                        60, 
+                        "生成回答", 
+                        "大模型正在分析并生成专业回答"
+                    )
+                    
+                    # 调用大模型
+                    response = await llm_client.chat_completion(
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=2000
+                    )
+                    
+                    # 提取回答内容
+                    if response and hasattr(response, 'choices') and response.choices:
+                        answer = response.choices[0].message.content
+                    else:
+                        answer = "抱歉，我暂时无法回答您的问题，请稍后重试。"
+                    
+                    await update_progress(
+                        "回答生成完成...", 
+                        90, 
+                        "完成", 
+                        "大模型回答已生成"
+                    )
+                    
+                    # 格式化结果
+                    travel_result = f"""# 🎯 旅游咨询回答
+
+## 📝 您的问题
+{content}
+
+## 💡 专业回答
+{answer}
+
+---
+
+**💬 如果您需要更详细的旅游规划，请提供具体的出行时间、人数、预算等信息，我将为您制定完整的旅游计划。**
+"""
+                    
+                    # 直接存储结果到任务状态中
+                    task.travel_result = travel_result
+                    
+                except Exception as e:
+                    logger.error(f"大模型调用失败: {e}")
+                    # 如果大模型调用失败，使用备用回答
+                    travel_result =f"大模型调用失败: {e}"
+                    task.travel_result = travel_result
+                    
+            else:
+                # 复杂查询，使用TravelCoordinator
+                await update_progress(
+                    "正在分析旅游需求...", 
+                    20, 
+                    "需求分析", 
+                    "地理位置识别、复杂度分析、MCP工具选择"
+                )
+                
                 # 调用旅游协调器
-            logger.info(f"🔄 正在调用TravelCoordinator处理: {content}")
-            command = await travel_coordinator.coordinate_travel_request(state)
-            logger.info(f"📋 TravelCoordinator返回结果: goto={command.goto}, update_keys={list(command.update.keys()) if hasattr(command, 'update') else 'None'}")
-            if hasattr(command, 'update'):
+                logger.info(f"🔄 正在调用TravelCoordinator处理: {content}")
+                command = await travel_coordinator.coordinate_travel_request(state)
+                logger.info(f"📋 TravelCoordinator返回结果: goto={command.goto}, update_keys={list(command.update.keys()) if hasattr(command, 'update') else 'None'}")
+                if hasattr(command, 'update'):
                     logger.info(f"📊 返回的update内容: {command.update}")
                 
-            # 根据协调器的决策执行不同的处理
-            if command.goto == "__end__":
+                # 根据协调器的决策执行不同的处理
+                if command.goto == "__end__":
                     # 简单查询，直接返回结果
                     logger.info("🎯 进入简单查询处理分支")
                     analysis = command.update.get("travel_analysis", {}) if hasattr(command, 'update') else {}
@@ -491,80 +589,49 @@ class GeneratorServer:
                         f"目的地: {analysis.get('destination', '未识别')}, 区域: {analysis.get('region', '未知')}"
                     )
                     
-                    logger.info("🎯 检测到简单查询，直接使用大模型回复")
-                
-              
-                
-                    #   导入大模型服务
-                    from src.llm.llm import basic_llm
-                
-                    try:
-                        llm_client = basic_llm
-                        
-                        # 构建提示词
-                        prompt = f"""你是一个专业的旅游顾问，请根据用户的问题提供详细、准确的回答。
+                    # 生成简单查询响应
+                    travel_result = f"""
+# 🏔️ 旅游信息查询结果
 
-用户问题：{content}
+## 📍 目的地分析
+- **目的地**: {analysis.get('destination', '未识别')}
+- **出发地**: {analysis.get('departure', '未指定')}
+- **地理区域**: {'🇨🇳 中国境内' if analysis.get('region') == 'china' else '🌍 国际目的地' if analysis.get('region') == 'international' else '❓ 未确定'}
+- **查询类型**: 简单信息查询
 
-请提供：
-1. 直接回答用户的具体问题
-2. 相关的旅游信息和建议
-3. 如果用户需要更详细的旅游规划，请提醒他们提供更多信息
+## 💡 智能建议
 
-请用中文回答，格式要清晰易读。"""
+如果您需要**详细的旅游规划**，请提供以下信息：
 
-                        await update_progress(
-                            "正在生成回答...", 
-                            60, 
-                            "生成回答", 
-                            "大模型正在分析并生成专业回答"
-                        )
-                        logger.info(f"🎯 {prompt}")
-                        # 调用大模型
-                        response = llm_client.invoke(prompt)
-                        # if response and hasattr(response, 'choices') and response.choices:
-                        #     answer = response.choices[0].message.content
-                        # else:
-                        #     answer = "抱歉，我暂时无法回答您的问题，请稍后重试。"
-                        # logger.info(f"🎯 {answer}")
-                        # 提取回答内容
-                        logger.info(f"response🎯 {response}")
-                        if response and hasattr(response, 'content'):
-                            answer = response.content
-                        else:
-                            answer = "抱歉，我暂时无法回答您的问题，请稍后重试。"
-                        
-                        await update_progress(
-                            "回答生成完成...", 
-                            90, 
-                            "完成", 
-                            "大模型回答已生成"
-                        )
-                        
-                        # 格式化结果
-                        travel_result = f"""# 🎯 旅游咨询回答
+### 📅 出行时间
+- 具体出发日期和返回日期
+- 旅行总天数
 
-## 📝 您的问题
-{content}
+### 👥 出行人数
+- 成人数量
+- 儿童数量（如有）
+- 出行关系（家庭/朋友/情侣等）
 
-## 💡 专业回答
-{answer}
+### 💰 预算信息
+- 总预算范围
+- 预算类型（经济型/舒适型/豪华型）
 
----
+### 🎯 旅行偏好
+- 旅行类型（自然风光/文化历史/美食体验/购物娱乐等）
+- 住宿要求
+- 交通偏好
 
-**💬 如果您需要更详细的旅游规划，请提供具体的出行时间、人数、预算等信息，我将为您制定完整的旅游计划。**
+### 📝 特殊需求
+- 饮食限制
+- 身体状况考虑
+- 其他特殊要求
+
+**提供这些信息后，我将为您制定详细的个性化旅游计划！**
 """
-                        
-                        # 直接存储结果到任务状态中
-                        logger.info(f"回复结果🎯 {travel_result}")
-                        task.travel_result = travel_result
                     
-                    except Exception as e:
-                        logger.error(f"大模型调用失败: {e}")
-                        # 如果大模型调用失败，使用备用回答
-                       
-                        task.travel_result = f"大模型调用失败: {e}"
-                    
+                    # 直接存储结果到任务状态中
+                    task.travel_result = travel_result
+                
             elif command.goto == "planner":
                 # 复杂规划，直接使用TravelCoordinator生成的详细计划
                 logger.info("🎯 进入复杂规划处理分支")
@@ -1206,106 +1273,15 @@ class GeneratorServer:
     <title>旅游规划智能体</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Markdown渲染支持 -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
-    <!-- Mermaid流程图支持 -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.2.4/dist/mermaid.min.js"></script>
-    <!-- highlight.js代码高亮 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-    <!-- GitHub风格的markdown CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-light.min.css">
     <style>
         .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .result-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .markdown-content { line-height: 1.8; }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 { margin: 1.5rem 0 1rem 0; font-weight: bold; }
+        .markdown-content h1 { font-size: 1.5rem; } .markdown-content h2 { font-size: 1.3rem; } .markdown-content h3 { font-size: 1.1rem; }
+        .markdown-content ul, .markdown-content ol { margin-left: 2rem; margin-bottom: 1rem; }
+        .markdown-content li { margin-bottom: 0.5rem; }
         .progress-bar { transition: width 0.3s ease; }
-        
-        /* 自定义markdown样式 */
-        .markdown-body {
-            box-sizing: border-box;
-            min-width: 200px;
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-            font-size: 16px;
-            line-height: 1.6;
-            word-wrap: break-word;
-        }
-        
-        /* 表格样式增强 */
-        .markdown-body table {
-            border-collapse: collapse;
-            margin: 1em 0;
-            width: 100%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .markdown-body th,
-        .markdown-body td {
-            border: 1px solid #d0d7de;
-            padding: 8px 12px;
-            text-align: left;
-        }
-        
-        .markdown-body th {
-            background-color: #f6f8fa;
-            font-weight: 600;
-        }
-        
-        .markdown-body tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        
-        /* 代码块样式 */
-        .markdown-body pre {
-            background-color: #f6f8fa;
-            border-radius: 8px;
-            padding: 16px;
-            overflow-x: auto;
-            margin: 1em 0;
-        }
-        
-        .markdown-body code {
-            background-color: rgba(175, 184, 193, 0.2);
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-        }
-        
-        /* Mermaid图表容器 */
-        .mermaid {
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        /* 引用块样式 */
-        .markdown-body blockquote {
-            border-left: 4px solid #d0d7de;
-            padding: 0 1em;
-            color: #656d76;
-            margin: 1em 0;
-            background-color: #f6f8fa;
-            border-radius: 0 6px 6px 0;
-        }
-        
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .markdown-body {
-                padding: 15px;
-                font-size: 14px;
-            }
-            
-            .markdown-body table {
-                font-size: 12px;
-            }
-            
-            .markdown-body th,
-            .markdown-body td {
-                padding: 6px 8px;
-            }
-        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -1453,7 +1429,7 @@ class GeneratorServer:
                             </button>
                         </div>
                     </div>
-                    <div id="resultContent" class="markdown-body"></div>
+                    <div id="resultContent" class="markdown-content text-gray-700"></div>
                 </div>
             </div>
         </div>
@@ -1462,37 +1438,13 @@ class GeneratorServer:
     <script>
         const API_BASE_URL = window.location.origin;
         let currentTaskId = null;
-        let originalMarkdownContent = ''; // 保存原始markdown内容
 
         document.addEventListener('DOMContentLoaded', function() {
-            // 初始化日期
             const today = new Date(); 
             const tomorrow = new Date(today); 
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('startDate').valueAsDate = today; 
             document.getElementById('endDate').valueAsDate = tomorrow;
-            
-            // 初始化Mermaid配置
-            if (typeof mermaid !== 'undefined') {
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: 'default',
-                    themeVariables: {
-                        primaryColor: '#667eea',
-                        primaryTextColor: '#333',
-                        primaryBorderColor: '#764ba2',
-                        lineColor: '#666',
-                        secondaryColor: '#f6f8fa',
-                        tertiaryColor: '#fff'
-                    },
-                    securityLevel: 'loose',
-                    flowchart: {
-                        htmlLabels: true,
-                        curve: 'basis'
-                    }
-                });
-                console.log('✅ Mermaid初始化完成');
-            }
             
             // 新增：自由文本输入框交互
             const freeTextInput = document.getElementById('freeTextInput');
@@ -1609,51 +1561,44 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
                         clearInterval(pollInterval); 
                         updateProgress(100, '生成完成！');
                         
-                        // 处理旅游规划结果
-                        if (data.travel_result) {
-                            console.log('✅ 获取到旅游规划结果:', data.travel_result.substring(0, 200) + '...');
-                            setTimeout(() => { 
-                                showResult(data.travel_result);  // 显示旅游规划内容
-                                hideProgress(); 
-                            }, 1000);
-                        } else {
-                            // 如果没有旅游规划结果，说明是代码生成任务，需要下载文件
-                            try {
-                                const downloadResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
-                                if (downloadResponse.ok) {
-                                    const contentType = downloadResponse.headers.get('content-type');
-                                    if (contentType && contentType.includes('application/json')) {
-                                        // 处理JSON响应（旅游规划）
-                                        const jsonResult = await downloadResponse.json();
-                                        console.log('✅ 获取到旅游规划结果 (JSON):', jsonResult.content.substring(0, 200) + '...');
-                                        setTimeout(() => { 
-                                            showResult(jsonResult.content);  // 显示旅游规划内容
-                                            hideProgress(); 
-                                        }, 1000);
-                                    } else {
-                                        // 处理文本响应（代码生成）
-                                        const actualResult = await downloadResponse.text();
-                                        console.log('✅ 获取到代码生成结果:', actualResult.substring(0, 200) + '...');
-                                        setTimeout(() => { 
-                                            showResult(actualResult);  // 显示代码生成结果
-                                            hideProgress(); 
-                                        }, 1000);
-                                    }
-                                } else {
-                                    const errorText = await downloadResponse.text();
-                                    throw new Error(`服务器错误 (${downloadResponse.status}): ${errorText}`);
-                                }
-                            } catch (error) {
-                                console.error('❌ 获取结果失败:', error);
-                                hideProgress();
-                                showResult(`
-                                    <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee;">
-                                        <h3>❌ 获取结果失败</h3>
-                                        <p><strong>错误详情:</strong> ${error.message}</p>
-                                        <p>请检查后端服务状态，或查看浏览器控制台获取更多信息。</p>
-                                    </div>
-                                `);
+                        // 获取实际结果
+                        try {
+                            const downloadResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
+                            if (downloadResponse.ok) {
+                                // 获取实际的响应内容
+                                const actualResult = await downloadResponse.text();
+                                console.log('✅ 获取到实际结果:', actualResult.substring(0, 200) + '...');
+                                setTimeout(() => { 
+                                    showResult(actualResult);  // 显示真实结果
+                                    hideProgress(); 
+                                }, 1000);
+                            } else {
+                                // 处理HTTP错误
+                                const errorText = await downloadResponse.text();
+                                throw new Error(`服务器错误 (${downloadResponse.status}): ${errorText}`);
                             }
+                        } catch (error) {
+                            console.error('❌ 获取结果失败:', error);
+                            hideProgress();
+                            // 显示错误信息而不是假数据
+                            showResult(`
+                                <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee; margin: 20px 0;">
+                                    <h3>❌ 获取结果失败</h3>
+                                    <p><strong>错误详情:</strong> ${error.message}</p>
+                                    <p><strong>可能原因:</strong></p>
+                                    <ul>
+                                        <li>后端服务异常或超时</li>
+                                        <li>网络连接问题</li>
+                                        <li>任务执行失败</li>
+                                    </ul>
+                                    <p><strong>建议操作:</strong></p>
+                                    <ul>
+                                        <li>检查浏览器控制台获取详细错误信息</li>
+                                        <li>刷新页面重新尝试</li>
+                                        <li>联系技术支持</li>
+                                    </ul>
+                                </div>
+                            `);
                         }
                     } else if (data.status === 'failed') { 
                         clearInterval(pollInterval); 
@@ -1722,59 +1667,7 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
         
         function showResult(result) { 
             document.getElementById('resultContainer').classList.remove('hidden'); 
-            
-            // 检测内容类型并进行相应的渲染
-            const resultElement = document.getElementById('resultContent');
-            
-            if (typeof result === 'string' && result.includes('#') && !result.includes('<')) {
-                // 如果是markdown格式的字符串，保存原始内容并使用marked库渲染
-                console.log('🎨 检测到Markdown内容，开始渲染...');
-                originalMarkdownContent = result; // 保存原始markdown内容
-                
-                try {
-                    // 配置marked选项
-                    marked.setOptions({
-                        gfm: true,              // 启用GitHub风格的markdown
-                        breaks: true,           // 换行符转为<br>
-                        sanitize: false,        // 不清理HTML标签（谨慎使用）
-                        highlight: function(code, lang) {
-                            // 代码高亮
-                            if (lang && hljs.getLanguage(lang)) {
-                                try {
-                                    return hljs.highlight(code, { language: lang }).value;
-                                } catch (err) {
-                                    console.warn('代码高亮失败:', err);
-                                }
-                            }
-                            return hljs.highlightAuto(code).value;
-                        }
-                    });
-                    
-                    // 渲染markdown
-                    const htmlContent = marked.parse(result);
-                    resultElement.innerHTML = htmlContent;
-                    
-                    // 处理Mermaid图表
-                    if (result.includes('```mermaid') || result.includes('graph') || result.includes('flowchart')) {
-                        console.log('🔄 检测到Mermaid图表，正在初始化...');
-                        setTimeout(() => {
-                            mermaid.init();
-                        }, 100);
-                    }
-                    
-                    console.log('✅ Markdown渲染完成');
-                    
-                } catch (error) {
-                    console.error('❌ Markdown渲染失败:', error);
-                    // 如果渲染失败，回退到纯文本显示
-                    originalMarkdownContent = result; // 即使渲染失败也保存原始内容
-                    resultElement.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; background: #f5f5f5; padding: 20px; border-radius: 8px;">${result}</pre>`;
-                }
-            } else {
-                // 如果是HTML或其他格式，直接设置
-                console.log('📄 直接显示HTML内容');
-                resultElement.innerHTML = result;
-            }
+            document.getElementById('resultContent').innerHTML = result; 
         }
 
         function generateSampleResult() {
@@ -1874,56 +1767,36 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
         }
 
         document.getElementById('exportBtn').addEventListener('click', function() {
-            let markdownContent = '';
-            
-            if (originalMarkdownContent) {
-                // 如果有原始markdown内容，直接使用
-                markdownContent = originalMarkdownContent;
-                console.log('✅ 使用原始Markdown内容导出');
-            } else {
-                // 如果没有原始内容，尝试从HTML转换（备用方案）
-                console.log('⚠️ 没有原始Markdown内容，尝试从HTML转换');
-                const content = document.getElementById('resultContent').innerHTML;
-                markdownContent = content
-                    .replace(/<h1>/g, '# ')
-                    .replace(/<\\/h1>/g, '\\n\\n')
-                    .replace(/<h2>/g, '## ')
-                    .replace(/<\\/h2>/g, '\\n\\n')
-                    .replace(/<h3>/g, '### ')
-                    .replace(/<\\/h3>/g, '\\n\\n')
-                    .replace(/<ul>/g, '')
-                    .replace(/<\\/ul>/g, '\\n')
-                    .replace(/<li>/g, '- ')
-                    .replace(/<\\/li>/g, '\\n')
-                    .replace(/<strong>/g, '**')
-                    .replace(/<\\/strong>/g, '**')
-                    .replace(/<em>/g, '*')
-                    .replace(/<\\/em>/g, '*')
-                    .replace(/<p>/g, '')
-                    .replace(/<\\/p>/g, '\\n\\n')
-                    .replace(/&nbsp;/g, ' ')
-                    .replace(/\\n\\s*\\n\\s*\\n/g, '\\n\\n')
-                    .replace(/<[^>]*>/g, ''); // 移除所有剩余的HTML标签
-            }
-            
-            if (!markdownContent.trim()) {
-                alert('没有可导出的内容');
-                return;
-            }
-            
-            // 创建并下载文件
-            const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
+            const content = document.getElementById('resultContent').innerHTML;
+            let markdown = content
+                .replace(/<h1>/g, '# ')
+                .replace(/<\\/h1>/g, '\\n\\n')
+                .replace(/<h2>/g, '## ')
+                .replace(/<\\/h2>/g, '\\n\\n')
+                .replace(/<h3>/g, '### ')
+                .replace(/<\\/h3>/g, '\\n\\n')
+                .replace(/<ul>/g, '')
+                .replace(/<\\/ul>/g, '\\n')
+                .replace(/<li>/g, '- ')
+                .replace(/<\\/li>/g, '\\n')
+                .replace(/<strong>/g, '**')
+                .replace(/<\\/strong>/g, '**')
+                .replace(/<em>/g, '*')
+                .replace(/<\\/em>/g, '*')
+                .replace(/<p>/g, '')
+                .replace(/<\\/p>/g, '\\n\\n')
+                .replace(/&nbsp;/g, ' ')
+                .replace(/\\n\\s*\\n\\s*\\n/g, '\\n\\n');
+                
+            const blob = new Blob([markdown], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; 
-            a.download = `旅游规划_${new Date().toISOString().split('T')[0]}.md`; 
-            a.style.display = 'none';
+            a.download = `旅行计划_${new Date().toISOString().split('T')[0]}.md`; 
             document.body.appendChild(a); 
             a.click(); 
             document.body.removeChild(a); 
             URL.revokeObjectURL(url);
-            
-            console.log('📁 Markdown文件导出完成');
         });
 
         document.getElementById('newPlanBtn').addEventListener('click', function() {
