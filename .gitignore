@@ -14,16 +14,16 @@ sh
 generator.log
 # Virtual environments
 .venv
-
+app.log
 # Environment variables
 .env
-
+test_response.json
 .idea/
 store
 .vscode/*
 .DS_Store
 config/mcp.json
-
+.env的副本
 # mypy
 .mypy_cache/
 .dmypy.json
