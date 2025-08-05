@@ -53,8 +53,9 @@ class AgentManager:
 
     async def initialize(self, user_agent_flag=USR_AGENT):
         """Asynchronously initializes the AgentManager by loading agents and tools."""
-        await self._load_agents(user_agent_flag)
+        # 🔧 修复：先加载工具，再加载智能体，确保旅游智能体创建时工具可用
         await self.load_tools()
+        await self._load_agents(user_agent_flag)
         logger.info(f"AgentManager initialized. {len(self.available_agents)} agents and {len(self.available_tools)} tools available.")
 
     async def _create_agent_by_prebuilt(self, user_id: str, name: str, nick_name: str, llm_type: str, tools: list[tool], prompt: str, description: str):
@@ -183,6 +184,7 @@ class AgentManager:
         await asyncio.gather(*agent_tasks)
     
     async def _load_default_agents(self):
+        # ✅ 保留现有默认智能体创建
         await self._create_agent_by_prebuilt(
             user_id="share",
             name="researcher",
@@ -218,6 +220,23 @@ class AgentManager:
             tools=[],
             prompt=get_prompt_template("reporter"),
             description="This agent specializes in creating clear, comprehensive reports based solely on provided information and verifiable facts. It presents data objectively, organizes information logically, and highlights key findings using professional language. The agent structures reports with executive summaries, detailed analysis, and actionable conclusions while maintaining strict data integrity and never fabricating information.")
+
+        # 🔄 新增：创建标准旅游智能体
+        try:
+            from src.manager.travel_agent_templates import TravelAgentTemplateManager
+            travel_template_manager = TravelAgentTemplateManager(self)
+            travel_results = await travel_template_manager.create_standard_travel_agents()
+            
+            success_count = sum(1 for result in travel_results.values() if result is True)
+            existing_count = sum(1 for result in travel_results.values() if result == "already_exists")
+            failed_count = sum(1 for result in travel_results.values() if result is False)
+            
+            logger.info(f"旅游智能体创建完成: 成功创建 {success_count} 个, 已存在 {existing_count} 个, 创建失败 {failed_count} 个")
+            
+        except Exception as e:
+            logger.error(f"创建旅游智能体模板时出错: {e}")
+        
+        logger.info("默认智能体和标准旅游智能体加载完成")
 
     async def _load_agents(self, user_agent_flag):
         await self._load_default_agents()
@@ -256,4 +275,7 @@ agents_dir = get_project_root() / "store" / "agents"
 prompts_dir = get_project_root() / "store" / "prompts"
 
 agent_manager = AgentManager(tools_dir, agents_dir, prompts_dir)
-asyncio.run(agent_manager.initialize())
+
+# 只在直接运行时初始化，避免导入时的事件循环冲突
+if __name__ == "__main__":
+    asyncio.run(agent_manager.initialize())
