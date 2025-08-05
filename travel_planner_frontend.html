@@ -288,16 +288,21 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
                     if (data.status === 'completed') {
                         clearInterval(pollInterval);
                         
-                        // 获取结果
-                        const resultResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
-                        if (resultResponse.ok) {
-                            // 获取实际的响应内容
-                            const actualResult = await resultResponse.text();
-                            console.log('✅ 获取到实际结果:', actualResult.substring(0, 200) + '...');
-                            showResult(actualResult);  // 显示真实结果
+                        // 直接从状态数据中获取旅游规划结果
+                        if (data.travel_result) {
+                            console.log('✅ 获取到旅游规划结果:', data.travel_result.substring(0, 200) + '...');
+                            showResult(data.travel_result);  // 显示旅游规划内容
                         } else {
-                            const errorText = await resultResponse.text();
-                            throw new Error(`服务器错误 (${resultResponse.status}): ${errorText}`);
+                            // 如果没有旅游规划结果，说明是代码生成任务，需要下载文件
+                            const resultResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
+                            if (resultResponse.ok) {
+                                const actualResult = await resultResponse.text();
+                                console.log('✅ 获取到代码生成结果:', actualResult.substring(0, 200) + '...');
+                                showResult(actualResult);  // 显示代码生成结果
+                            } else {
+                                const errorText = await resultResponse.text();
+                                throw new Error(`服务器错误 (${resultResponse.status}): ${errorText}`);
+                            }
                         }
                         
                         hideProgress();

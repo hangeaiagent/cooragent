@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>旅游规划智能体</title>
+    <title>旅游规划智能体@@@</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -228,30 +228,39 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
                         clearInterval(pollInterval); 
                         updateProgress(100, '生成完成！');
                         
-                        // 获取实际结果
-                        try {
-                            const downloadResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
-                            if (downloadResponse.ok) {
-                                const actualResult = await downloadResponse.text();
-                                console.log('✅ 获取到实际结果:', actualResult.substring(0, 200) + '...');
-                                setTimeout(() => { 
-                                    showResult(actualResult);  // 显示真实结果
-                                    hideProgress(); 
-                                }, 1000);
-                            } else {
-                                const errorText = await downloadResponse.text();
-                                throw new Error(`服务器错误 (${downloadResponse.status}): ${errorText}`);
+                        // 直接从状态数据中获取旅游规划结果
+                        if (data.travel_result) {
+                            console.log('✅ 获取到旅游规划结果:', data.travel_result.substring(0, 200) + '...');
+                            setTimeout(() => { 
+                                showResult(data.travel_result);  // 显示旅游规划内容
+                                hideProgress(); 
+                            }, 1000);
+                        } else {
+                            // 如果没有旅游规划结果，说明是代码生成任务，需要下载文件
+                            try {
+                                const downloadResponse = await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`);
+                                if (downloadResponse.ok) {
+                                    const actualResult = await downloadResponse.text();
+                                    console.log('✅ 获取到代码生成结果:', actualResult.substring(0, 200) + '...');
+                                    setTimeout(() => { 
+                                        showResult(actualResult);  // 显示代码生成结果
+                                        hideProgress(); 
+                                    }, 1000);
+                                } else {
+                                    const errorText = await downloadResponse.text();
+                                    throw new Error(`服务器错误 (${downloadResponse.status}): ${errorText}`);
+                                }
+                            } catch (error) {
+                                console.error('❌ 获取结果失败:', error);
+                                hideProgress();
+                                showResult(`
+                                    <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee;">
+                                        <h3>❌ 获取结果失败</h3>
+                                        <p><strong>错误详情:</strong> ${error.message}</p>
+                                        <p>请检查后端服务状态，或查看浏览器控制台获取更多信息。</p>
+                                    </div>
+                                `);
                             }
-                        } catch (error) {
-                            console.error('❌ 获取结果失败:', error);
-                            hideProgress();
-                            showResult(`
-                                <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 5px; background-color: #ffebee;">
-                                    <h3>❌ 获取结果失败</h3>
-                                    <p><strong>错误详情:</strong> ${error.message}</p>
-                                    <p>请检查后端服务状态，或查看浏览器控制台获取更多信息。</p>
-                                </div>
-                            `);
                         }
                     } else if (data.status === 'failed') { 
                         clearInterval(pollInterval); 
