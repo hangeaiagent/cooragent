@@ -21,6 +21,9 @@ from src.interface.serializer import AgentBuilder
 from src.utils.chinese_names import generate_chinese_log, format_agent_progress_log, get_agent_chinese_name
 import asyncio
 
+# 🔄 新增：导入旅游规划器
+from src.workflow.travel_planner import travel_planner_node
+
 
 logger = logging.getLogger(__name__)
 
@@ -830,7 +833,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
     )
 
 
-async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"]]:
+async def coordinator_node(state: State) -> Command[Literal["planner", "travel_planner", "__end__"]]:
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking. \n")
     
@@ -876,17 +879,34 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "__end__"
     
     # 分类结果分析
     if "handover_to_planner" in content:
-        goto = "planner"
+        # 🔄 新增：检查是否为旅游相关任务
+        user_query = state.get("USER_QUERY", "")
+        travel_keywords = ["旅游", "旅行", "行程", "景点", "攻略", "计划", "规划", "出游", "度假", "玩", "游览", "参观", "住宿", "交通", "去", "到", "travel", "trip", "visit", "tour", "vacation", "holiday"]
+        is_travel_related = any(keyword in user_query for keyword in travel_keywords)
         
-        # Protocol 2: 任务移交日志
-        handover_log = generate_chinese_log(
-            "coordinator_handover",
-            "🔄 协调器决策: Protocol 2 - 任务移交给规划器",
-            protocol_selected=2,
-            decision_type="complex_task",
-            handover_target="planner",
-            task_complexity="requires_planning"
-        )
+        if is_travel_related:
+            goto = "travel_planner"
+            # Protocol 2: 旅游任务移交日志
+            handover_log = generate_chinese_log(
+                "coordinator_travel_handover",
+                "🗺️ 协调器决策: Protocol 2 - 旅游任务移交给旅游规划器",
+                protocol_selected=2,
+                decision_type="travel_task",
+                handover_target="travel_planner",
+                task_complexity="requires_travel_planning"
+            )
+        else:
+            goto = "planner"
+            # Protocol 2: 通用任务移交日志
+            handover_log = generate_chinese_log(
+                "coordinator_handover",
+                "🔄 协调器决策: Protocol 2 - 任务移交给标准规划器",
+                protocol_selected=2,
+                decision_type="complex_task",
+                handover_target="planner",
+                task_complexity="requires_planning"
+            )
+        
         logger.info(f"中文日志: {handover_log['data']['message']}")
     else:
         # Protocol 1: 直接回复日志
@@ -932,6 +952,9 @@ def build_graph():
     workflow.add_node("publisher", publisher_node)  # type: ignore
     workflow.add_node("agent_factory", agent_factory_node)  # type: ignore
     workflow.add_node("agent_proxy", agent_proxy_node)  # type: ignore
+    
+    # 🔄 新增：旅游专用节点
+    workflow.add_node("travel_planner", travel_planner_node)  # type: ignore
 
     workflow.set_start("coordinator")
     return workflow.compile()

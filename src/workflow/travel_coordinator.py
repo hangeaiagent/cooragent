@@ -259,8 +259,26 @@ class TravelCoordinator:
             else:
                 logger.info("识别为复杂规划任务，转发给旅游规划器")
                 
+                # 🔄 新增：旅游类型和专业度分析
+                # 从messages中提取用户查询内容
+                user_query = ""
+                for msg in messages:
+                    if msg.get('role') == 'user':
+                        user_query = msg.get('content', '')
+                        break
+                
+                travel_analysis = await self._analyze_travel_requirements(user_query)
+                
+                logger.info(f"增强旅游分析: {travel_analysis}")
+                
+                # 🔄 新增：根据旅游类型选择规划器
+                if travel_analysis["requires_specialized_planning"]:
+                    next_node = "travel_planner"  # 使用专业旅游规划器
+                else:
+                    next_node = "planner"         # 使用标准规划器
+                
                 # 选择MCP工具配置
-                mcp_config = self._select_mcp_tools(travel_region)
+                mcp_config = self._select_mcp_tools(travel_region, travel_analysis["travel_type"])
                 
                 return Command(
                     update={
@@ -269,11 +287,15 @@ class TravelCoordinator:
                             "destination": destination,
                             "region": travel_region,
                             "complexity": complexity,
+                            "travel_type": travel_analysis["travel_type"],
+                            "duration": travel_analysis.get("duration"),
+                            "budget_range": travel_analysis.get("budget_range"),
+                            "preferences": travel_analysis.get("preferences", []),
                             "mcp_config": mcp_config,
-                            "routing_decision": "travel_planning"
+                            "routing_decision": "specialized_planning"
                         }
                     },
-                    goto="planner"  # 暂时使用标准planner，后续会改为travel_planner
+                    goto=next_node
                 )
                 
         except Exception as e:
@@ -285,7 +307,7 @@ class TravelCoordinator:
                 goto="__end__"
             )
     
-    def _select_mcp_tools(self, travel_region: str) -> Dict[str, Any]:
+    def _select_mcp_tools(self, travel_region: str, travel_type: str = "general") -> Dict[str, Any]:
         """根据旅游区域选择MCP工具配置"""
         
         if travel_region == "china":
@@ -307,3 +329,56 @@ class TravelCoordinator:
             return {
                 "tavily": {"command": "python", "args": ["tools/search.py"]}
             } 
+    
+    async def _analyze_travel_requirements(self, user_query: str) -> Dict[str, Any]:
+        """🔄 新增：深度分析旅游需求"""
+        
+        # 旅游类型分类
+        travel_types = {
+            "cultural": ["文化", "历史", "博物馆", "古迹", "遗产"],
+            "leisure": ["休闲", "度假", "海滩", "温泉", "放松"],
+            "adventure": ["探险", "户外", "徒步", "登山", "极限"],
+            "business": ["商务", "会议", "出差", "工作"],
+            "family": ["亲子", "家庭", "儿童", "老人"],
+            "food": ["美食", "餐厅", "小吃", "特色菜"],
+            "shopping": ["购物", "商场", "特产", "免税"]
+        }
+        
+        detected_types = []
+        for travel_type, keywords in travel_types.items():
+            if any(keyword in user_query for keyword in keywords):
+                detected_types.append(travel_type)
+        
+        # 提取时间和预算信息
+        import re
+        duration_match = re.search(r'(\d+)天|(\d+)日', user_query)
+        duration = int(duration_match.group(1)) if duration_match else None
+        
+        budget_match = re.search(r'(\d+)元|(\d+)块|预算(\d+)', user_query)
+        budget_range = int(budget_match.group(1) or budget_match.group(2) or budget_match.group(3)) if budget_match else None
+        
+        # 判断是否需要规划
+        planning_indicators = [
+            "行程", "计划", "规划", "安排", "路线", "攻略", 
+            "几天", "预算", "住宿", "交通", "景点推荐"
+        ]
+        requires_planning = any(indicator in user_query for indicator in planning_indicators)
+        
+        # 判断是否需要专业化旅游规划器
+        specialized_indicators = [
+            "详细", "完整", "全面", "专业", "优化", "最佳",
+            len(detected_types) > 1,  # 多类型旅游
+            duration and duration > 2,  # 超过2天
+            budget_range is not None  # 有预算要求
+        ]
+        requires_specialized_planning = any(specialized_indicators)
+        
+        return {
+            "travel_type": detected_types[0] if detected_types else "general",
+            "travel_types": detected_types,
+            "duration": duration,
+            "budget_range": budget_range,
+            "requires_planning": requires_planning,
+            "requires_specialized_planning": requires_specialized_planning,
+            "preferences": detected_types
+        }
