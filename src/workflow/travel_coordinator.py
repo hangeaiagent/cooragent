@@ -171,7 +171,8 @@ class TravelTaskClassifier:
         # 复杂规划关键词
         self.complex_keywords = {
             "制定计划", "行程规划", "详细安排", "几天游", "预算", "住宿",
-            "交通", "路线", "攻略", "安排", "规划"
+            "交通", "路线", "攻略", "安排", "规划", "推荐具体", "餐厅", 
+            "酒店", "美食", "住宿", "民宿", "体验", "文化", "推荐"
         }
     
     def analyze_complexity(self, messages: List[Dict[str, Any]]) -> str:
@@ -191,15 +192,16 @@ class TravelTaskClassifier:
         
         planning_elements = sum([has_dates, has_budget, has_travelers])
         
-        # 决策逻辑
-        if complex_count >= 2 or planning_elements >= 2:
+        # 决策逻辑 - 更倾向于判断为复杂任务以启用MCP工具
+        if complex_count >= 1 or planning_elements >= 1:  # 降低阈值
             return "complex"
-        elif simple_count >= 1 and complex_count == 0:
+        elif simple_count >= 2 and complex_count == 0:  # 提高简单任务阈值
             return "simple"
-        elif len(content) > 50 and ("计划" in content or "规划" in content):
+        elif len(content) > 30 and ("计划" in content or "规划" in content or "推荐" in content):  # 降低长度要求
             return "complex"
         else:
-            return "simple"
+            # 默认倾向于复杂处理，以启用MCP工具获取详细信息
+            return "complex"
 
 
 class TravelCoordinator:
@@ -313,9 +315,7 @@ class TravelCoordinator:
         if travel_region == "china":
             logger.info("🇨🇳 选择中国旅游MCP工具配置")
             return {
-                "amap": {"url": "https://mcp.amap.com/sse"},
-                "ctrip": {"command": "python", "args": ["tools/ctrip_server.py"]},
-                "dianping": {"command": "node", "args": ["tools/dianping_server.js"]}
+                "amap": {"url": "https://mcp.amap.com/sse"}
             }
         elif travel_region == "international":
             logger.info("🌍 选择国际旅游MCP工具配置")

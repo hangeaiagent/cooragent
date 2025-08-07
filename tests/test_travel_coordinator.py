@@ -184,8 +184,6 @@ class TestTravelCoordinator:
         # 验证选择了中国MCP工具
         mcp_config = context["mcp_config"]
         assert "amap" in mcp_config
-        assert "ctrip" in mcp_config
-        assert "dianping" in mcp_config
     
     @pytest.mark.asyncio
     async def test_coordinate_complex_planning_international(self):
@@ -252,8 +250,6 @@ class TestTravelCoordinator:
         config = self.coordinator._select_mcp_tools("china")
         
         assert "amap" in config
-        assert "ctrip" in config
-        assert "dianping" in config
     
     def test_select_mcp_tools_international(self):
         """测试国际MCP工具选择"""
@@ -299,8 +295,6 @@ class TestTravelCoordinatorIntegration:
         # 验证MCP工具配置
         mcp_config = context["mcp_config"]
         assert "amap" in mcp_config  # 高德地图
-        assert "ctrip" in mcp_config  # 携程
-        assert "dianping" in mcp_config  # 大众点评
     
     @pytest.mark.asyncio
     async def test_full_workflow_international_complex(self):
