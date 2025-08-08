@@ -68,8 +68,14 @@ logger = logging.getLogger(__name__)
 
 # API模型定义
 class GenerateRequest(BaseModel):
-    content: str
+    content: Optional[str] = None
+    requirement: Optional[str] = None  # 兼容前端请求格式
+    workflow_mode: Optional[str] = "production"  # 新增模式字段
     user_id: Optional[str] = None
+    
+    def get_content(self) -> str:
+        """获取请求内容，兼容两种格式"""
+        return self.requirement or self.content or ""
     
 class GenerateResponse(BaseModel):
     task_id: str
@@ -148,17 +154,46 @@ class GeneratorServer:
             task_id = str(uuid.uuid4())
             user_id = request.user_id or f"user_{task_id[:8]}"
             
-            logger.info(f"收到请求: {request.content[:100]}...")
+            # 获取请求内容
+            content = request.get_content()
+            logger.info(f"收到请求: {content[:100]}...")
+            logger.info(f"工作流模式: {request.workflow_mode}")
+            
+            # 如果是consultation模式，直接进行简单咨询处理
+            if request.workflow_mode == "consultation":
+                logger.info(f"🤖 [请求分析] 识别为旅游咨询任务 - user_id: {user_id}, task_id: {task_id}")
+                
+                task_status = GenerationStatus(
+                    task_id=task_id,
+                    status="processing",
+                    message="正在处理您的旅游咨询...",
+                    created_at=datetime.now(),
+                    current_step="旅游咨询处理",
+                    step_details="AI正在分析您的问题并生成专业回答",
+                    progress=5
+                )
+                self.generation_tasks[task_id] = task_status
+                
+                background_tasks.add_task(self._run_consultation, task_id, content, user_id)
+                
+                response = GenerateResponse(
+                    task_id=task_id,
+                    status="processing",
+                    message="正在为您生成旅游咨询回答",
+                    created_at=datetime.now()
+                )
+                
+                return response
             
             # 检测是否为旅游相关任务
             from src.workflow.process import is_travel_related_task
-            messages = [{"content": request.content}]
+            messages = [{"content": content}]
             is_travel = is_travel_related_task(messages)
             
             if is_travel:
                 # 旅游规划任务
                 logger.info(f"🧳 [请求分析] 识别为旅游规划任务 - user_id: {user_id}, task_id: {task_id}")
-                logger.info(f"🧳 [请求分析] 请求内容: {request.content}")
+                logger.info(f"🧳 [请求分析] 请求内容: {content}")
                 
                 task_status = GenerationStatus(
                 task_id=task_id,
@@ -171,7 +206,7 @@ class GeneratorServer:
                 )
                 self.generation_tasks[task_id] = task_status
                 
-                background_tasks.add_task(self._run_travel_planning, task_id, request.content, user_id)
+                background_tasks.add_task(self._run_travel_planning, task_id, content, user_id)
                 
                 response = GenerateResponse(
                     task_id=task_id,
@@ -182,7 +217,7 @@ class GeneratorServer:
             else:
                 # 代码生成任务
                 logger.info(f"🔧 [请求分析] 识别为代码生成任务 - user_id: {user_id}, task_id: {task_id}")
-                logger.info(f"🔧 [请求分析] 请求内容: {request.content}")
+                logger.info(f"🔧 [请求分析] 请求内容: {content}")
                 
                 task_status = GenerationStatus(
                     task_id=task_id,
@@ -195,7 +230,7 @@ class GeneratorServer:
                 )
                 self.generation_tasks[task_id] = task_status
                 
-                background_tasks.add_task(self._run_code_generation, task_id, request.content, user_id)
+                background_tasks.add_task(self._run_code_generation, task_id, content, user_id)
                 
                 response = GenerateResponse(
                     task_id=task_id,
@@ -223,8 +258,17 @@ class GeneratorServer:
             task = self.generation_tasks[task_id]
             
             if task.status != "completed":
-                raise HTTPException(status_code=400, detail="代码还未生成完成")
+                raise HTTPException(status_code=400, detail="任务还未完成")
             
+            # 优先返回travel_result（用于咨询和旅游规划结果）
+            if hasattr(task, 'travel_result') and task.travel_result:
+                return Response(
+                    content=task.travel_result,
+                    media_type="text/markdown",
+                    headers={"Content-Disposition": f"attachment; filename=travel_result_{task_id}.md"}
+                )
+            
+            # 如果没有travel_result，检查是否有zip文件
             if not task.zip_path or not Path(task.zip_path).exists():
                 raise HTTPException(status_code=404, detail="生成的文件不存在")
             
@@ -431,6 +475,212 @@ class GeneratorServer:
             
             logger.error(f"代码生成失败 {task_id}: {e}", exc_info=True)
     
+    async def _run_consultation(self, task_id: str, question: str, user_id: str):
+        """处理旅游咨询请求 - 使用Coordinator Agent智能判断"""
+        try:
+            task = self.generation_tasks[task_id]
+            
+            # 更新进度
+            async def update_progress(message: str, progress: int, step: str, details: str):
+                task.message = message
+                task.progress = progress
+                task.current_step = step
+                task.step_details = details
+                logger.info(f"📊 进度更新 [{progress}%]: {step} - {details}")
+            
+            await update_progress("正在启动Coordinator Agent...", 10, "Agent启动", "Coordinator Agent正在分析您的请求")
+            
+            # 使用Coordinator Agent进行智能判断
+            from src.workflow.travel_coordinator import TravelCoordinator, GeographyDetector, TravelTaskClassifier
+            
+            await update_progress("正在分析问题复杂度...", 20, "智能分析", "Coordinator Agent正在判断问题类型和处理方式")
+            
+            # 初始化分析组件
+            geo_detector = GeographyDetector()
+            travel_classifier = TravelTaskClassifier()
+            
+            logger.info(f"🧠 [Coordinator Agent] 开始智能分析用户问题...")
+            logger.info(f"🧠 [用户问题] {question}")
+            
+            # 创建消息格式以供分析
+            messages = [{"role": "user", "content": question}]
+            
+            # 1. 地理位置识别
+            departure, destination = geo_detector.extract_locations(messages)
+            logger.info(f"🌍 [地理分析] 出发地: {departure}, 目的地: {destination}")
+            
+            # 2. 任务复杂度分析
+            complexity = travel_classifier.analyze_complexity(messages)
+            logger.info(f"🔍 [复杂度分析] 任务复杂度: {complexity}")
+            
+            await update_progress("正在制定处理策略...", 40, "策略制定", f"分析结果: {complexity}复杂度，根据问题类型选择处理方式")
+            
+            # 调用coordinator进行智能判断和处理
+            try:
+                if complexity == "simple":
+                    # 简单查询：使用增强的LLM直接回答
+                    logger.info(f"🚀 [简单查询] 使用增强LLM处理简单旅游咨询...")
+                    
+                    from src.llm.llm import get_llm_by_type
+                    llm_client = get_llm_by_type("basic")
+                    
+                    # 构建增强提示词，包含地理信息
+                    geo_context = ""
+                    if destination:
+                        travel_region = geo_detector.classify_region(destination)
+                        geo_context = f"\n\n地理信息分析：\n- 目的地：{destination}\n- 区域类型：{travel_region}"
+                        if departure:
+                            geo_context += f"\n- 出发地：{departure}"
+                    
+                    prompt = f"""您是一位专业的旅游顾问，请根据用户的问题提供准确、实用的旅游建议。
+
+用户问题：{question}{geo_context}
+
+请提供：
+1. 针对性的回答（结合目的地特色）
+2. 实用的建议（根据地理位置）
+3. 相关的注意事项
+4. 具体的推荐（景点、美食、住宿等）
+
+请用友好、专业的语气回答，并使用Markdown格式。"""
+
+                    await update_progress("正在生成专业回答...", 70, "AI分析", "基于地理信息的智能回答生成中")
+                    
+                    logger.info(f"📝 [增强提示词] 发送给大模型的完整提示词长度: {len(prompt)} 字符")
+                    response = llm_client.invoke(prompt)
+                    
+                    if response and hasattr(response, 'content'):
+                        answer = response.content
+                        logger.info(f"✅ [简单查询完成] 回答长度: {len(answer)} 字符")
+                    else:
+                        answer = "抱歉，我暂时无法回答您的问题，请稍后重试。"
+                        logger.warning(f"⚠️ [简单查询] 无法提取有效回答")
+                    
+                    travel_result = f"""# 🎯 旅游咨询回答
+
+## 📝 您的问题
+{question}
+
+## 💡 专业回答
+{answer}
+
+---
+
+**💬 如果您需要更详细的旅游规划，请提供具体的出行时间、人数、预算等信息，我将为您制定完整的旅游计划。**
+"""
+                    
+                else:
+                    # 复杂查询：调用完整的旅游规划流程
+                    logger.info(f"🚀 [复杂规划] 启动多智能体旅游规划流程...")
+                    
+                    await update_progress("正在启动旅游规划流程...", 60, "规划启动", "调用专业旅游规划智能体")
+                    
+                    # 这里应该调用完整的旅游规划流程，暂时先用增强回答
+                    from src.llm.llm import get_llm_by_type
+                    llm_client = get_llm_by_type("basic")
+                    
+                    detailed_prompt = f"""您是一位资深旅游规划专家，请为用户制定详细的旅游方案。
+
+用户需求：{question}
+
+请提供完整的旅游规划，包括：
+1. 行程概览和时间安排
+2. 景点推荐和路线规划  
+3. 住宿建议（不同价位）
+4. 美食推荐和特色体验
+5. 交通方式和预算估算
+6. 注意事项和实用建议
+
+请用专业、详细的方式回答，使用Markdown格式，确保信息实用且可操作。"""
+
+                    await update_progress("正在制定详细规划...", 80, "规划制定", "生成完整旅游方案中")
+                    
+                    logger.info(f"📝 [详细规划] 发送给大模型的规划提示词长度: {len(detailed_prompt)} 字符")
+                    response = llm_client.invoke(detailed_prompt)
+                    
+                    if response and hasattr(response, 'content'):
+                        answer = response.content
+                        logger.info(f"✅ [复杂规划完成] 规划方案长度: {len(answer)} 字符")
+                    else:
+                        answer = "抱歉，暂时无法为您制定详细的旅游规划，请稍后重试。"
+                        logger.warning(f"⚠️ [复杂规划] 无法生成规划方案")
+                    
+                    travel_result = f"""# 🗺️ 专业旅游规划方案
+
+## 📝 您的需求
+{question}
+
+## 🎯 详细规划方案
+{answer}
+
+---
+
+**📞 需要进一步咨询？请随时提出具体问题，我将为您提供更多专业建议。**
+"""
+                
+                logger.info(f"📝 [最终结果] Coordinator Agent处理完成，结果长度: {len(travel_result)} 字符")
+                
+            except Exception as coordinator_error:
+                logger.error(f"❌ [Coordinator错误] Coordinator处理失败: {coordinator_error}")
+                logger.error(f"❌ [错误详情] {str(coordinator_error)}")
+                
+                # 如果Coordinator失败，降级到简单LLM处理
+                await update_progress("智能分析失败，切换到基础模式...", 50, "降级处理", "使用基础大模型进行回答")
+                
+                from src.llm.llm import get_llm_by_type
+                llm_client = get_llm_by_type("basic")
+                
+                prompt = f"""您是一位专业的旅游顾问，请根据用户的问题提供准确、实用的旅游建议。
+
+用户问题：{question}
+
+请提供：
+1. 针对性的回答
+2. 实用的建议
+3. 相关的注意事项
+4. 如果适用，提供具体的推荐
+
+请用友好、专业的语气回答，并使用Markdown格式。"""
+
+                logger.info(f"🔄 [降级处理] 使用基础LLM处理，提示词长度: {len(prompt)} 字符")
+                response = llm_client.invoke(prompt)
+                
+                if response and hasattr(response, 'content'):
+                    answer = response.content
+                else:
+                    answer = "抱歉，我暂时无法回答您的问题，请稍后重试。"
+                
+                travel_result = f"""# 🎯 旅游咨询回答
+
+## 📝 您的问题
+{question}
+
+## 💡 专业回答
+{answer}
+
+---
+
+**💬 如果您需要更详细的旅游规划，请提供具体的出行时间、人数、预算等信息，我将为您制定完整的旅游计划。**
+"""
+            
+            # 存储结果
+            task.travel_result = travel_result
+            task.status = "completed"
+            task.completed_at = datetime.now()
+            task.progress = 100
+            task.current_step = "咨询完成"
+            task.step_details = "Coordinator Agent处理完成"
+            
+            logger.info(f"✅ 旅游咨询完成 - task_id: {task_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ 旅游咨询失败 - task_id: {task_id}, error: {e}")
+            if task_id in self.generation_tasks:
+                task = self.generation_tasks[task_id]
+                task.status = "failed"
+                task.error_details = str(e)
+                task.completed_at = datetime.now()
+
     async def _run_travel_planning(self, task_id: str, content: str, user_id: str):
         """运行旅游规划任务"""
         task = self.generation_tasks[task_id]
