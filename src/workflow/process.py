@@ -342,7 +342,7 @@ async def _process_workflow(
                 return
             
             # 如果是复杂规划，继续执行标准工作流，但注入旅游上下文
-            elif command.goto == "planner":
+            elif command.goto == "planner" or command.goto == "travel_planner":
                 if hasattr(command, 'update') and 'travel_context' in command.update:
                     travel_context = command.update['travel_context']
                     

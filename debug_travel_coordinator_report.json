@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-08-07T11:01:33.984442",
+  "summary": {
+    "total_tests": 4,
+    "correct_routes": 2,
+    "success_rate": 50.0
+  },
+  "detailed_results": [
+    {
+      "case": "上海到北京旅游规划",
+      "query": "我想从上海去北京旅游5天，请制定详细的旅游规划",
+      "expected_route": "travel_publisher",
+      "actual_route": "travel_publisher",
+      "is_correct": true,
+      "state_updates": {
+        "messages": [
+          {
+            "content": "handover_to_planner()",
+            "tool": "coordinator",
+            "role": "assistant"
+          }
+        ],
+        "agent_name": "coordinator"
+      },
+      "selected_agent": "itinerary_designer",
+      "proxy_executed": true
+    },
+    {
+      "case": "杭州景点推荐",
+      "query": "推荐杭州的热门景点和美食",
+      "expected_route": "travel_publisher",
+      "actual_route": "travel_publisher",
+      "is_correct": true,
+      "state_updates": {
+        "messages": [
+          {
+            "content": "handover_to_planner()",
+            "tool": "coordinator",
+            "role": "assistant"
+          }
+        ],
+        "agent_name": "coordinator"
+      },
+      "selected_agent": "destination_expert",
+      "proxy_executed": true
+    },
+    {
+      "case": "非旅游查询",
+      "query": "今天天气怎么样？",
+      "expected_route": "planner",
+      "actual_route": "__end__",
+      "is_correct": false,
+      "state_updates": {
+        "messages": [
+          {
+            "content": "我无法实时获取天气信息。如果您想了解当前的天气状况，建议您使用天气应用程序或网站进行查询。有什么其他问题我可以帮助您解答吗？",
+            "tool": "coordinator",
+            "role": "assistant"
+          }
+        ],
+        "agent_name": "coordinator"
+      }
+    },
+    {
+      "case": "酒店预订",
+      "query": "帮我预订三亚的海景酒店",
+      "expected_route": "travel_publisher",
+      "actual_route": "planner",
+      "is_correct": false,
+      "state_updates": {
+        "messages": [
+          {
+            "content": "handover_to_planner()",
+            "tool": "coordinator",
+            "role": "assistant"
+          }
+        ],
+        "agent_name": "coordinator"
+      }
+    }
+  ]
+}

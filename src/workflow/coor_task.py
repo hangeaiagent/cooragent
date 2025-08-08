@@ -23,6 +23,8 @@ import asyncio
 
 # 🔄 新增：导入旅游规划器
 from src.workflow.travel_planner import travel_planner_node
+from src.workflow.travel_publisher import travel_publisher_node
+from src.workflow.travel_agent_proxy import travel_agent_proxy_node
 
 
 logger = logging.getLogger(__name__)
@@ -818,7 +820,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
         "planner_complete",
         f"🎯 规划器任务完成，准备移交给: {goto}",
         next_node=goto,
-        planning_status="completed" if goto == "publisher" else "terminated",
+        planning_status="completed" if goto in ["publisher", "travel_publisher"] else "terminated",
         workflow_mode=state["workflow_mode"]
     )
     logger.info(f"中文日志: {planner_complete_log['data']['message']}")
@@ -833,7 +835,7 @@ async def planner_node(state: State) -> Command[Literal["publisher", "__end__"]]
     )
 
 
-async def coordinator_node(state: State) -> Command[Literal["planner", "travel_planner", "__end__"]]:
+async def coordinator_node(state: State) -> Command[Literal["planner", "travel_planner", "travel_publisher", "__end__"]]:
     """Coordinator node that communicate with customers."""
     logger.info("Coordinator talking. \n")
     
@@ -885,14 +887,14 @@ async def coordinator_node(state: State) -> Command[Literal["planner", "travel_p
         is_travel_related = any(keyword in user_query for keyword in travel_keywords)
         
         if is_travel_related:
-            goto = "travel_planner"
+            goto = "travel_publisher"
             # Protocol 2: 旅游任务移交日志
             handover_log = generate_chinese_log(
                 "coordinator_travel_handover",
-                "🗺️ 协调器决策: Protocol 2 - 旅游任务移交给旅游规划器",
+                "🗺️ 协调器决策: Protocol 2 - 旅游任务移交给旅游发布器",
                 protocol_selected=2,
                 decision_type="travel_task",
-                handover_target="travel_planner",
+                handover_target="travel_publisher",
                 task_complexity="requires_travel_planning"
             )
         else:
@@ -955,6 +957,8 @@ def build_graph():
     
     # 🔄 新增：旅游专用节点
     workflow.add_node("travel_planner", travel_planner_node)  # type: ignore
+    workflow.add_node("travel_publisher", travel_publisher_node)  # type: ignore
+    workflow.add_node("travel_agent_proxy", travel_agent_proxy_node)  # type: ignore
 
     workflow.set_start("coordinator")
     return workflow.compile()

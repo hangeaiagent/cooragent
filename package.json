@@ -1,0 +1,44 @@
+{
+  "name": "ai-assistant-platform",
+  "version": "1.0.0",
+  "description": "AI智能助手平台 - 多智能体2C产品",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx netlify dev --port 8888",
+    "build": "echo 'Building PWA...' && cp index.html dist/index.html",
+    "dev": "python -m http.server 8888",
+    "test": "echo 'No tests specified'",
+    "deploy": "netlify deploy --prod"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "travel",
+    "business",
+    "learning",
+    "multi-agent",
+    "pwa"
+  ],
+  "author": "AI Assistant Team",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "pwa": {
+    "name": "AI智能助手",
+    "short_name": "AI助手",
+    "theme_color": "#4A90E2",
+    "background_color": "#4A90E2",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ai-assistant-platform.git"
+  }
+}

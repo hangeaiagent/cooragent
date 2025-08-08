@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI智能助手 - 让AI成为您的生活伙伴</title>
+    
+    <!-- SEO优化 -->
+    <meta name="description" content="AI智能助手平台，提供旅行规划、商用分析、知识学习等多智能体服务，让AI成为您的专属生活伙伴">
+    <meta name="keywords" content="AI智能助手,旅行规划,多智能体,人工智能,生活助手">
+    
+    <!-- PWA支持 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#4A90E2">
+    <link rel="apple-touch-icon" href="./icons/icon-192x192.svg">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    
+    <!-- 样式和字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Markdown 与 代码高亮样式 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <!-- React CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Markdown/安全/高亮/Mermaid CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.7/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #F5A623;
+            --success-color: #27AE60;
+            --warning-color: #F39C12;
+            --error-color: #E74C3C;
+            --text-dark: #2C3E50;
+            --text-light: #7F8C8D;
+            --bg-light: #F8FAFE;
+            --bg-white: #FFFFFF;
+            --border-color: #E9ECEF;
+            --shadow-light: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-medium: 0 4px 16px rgba(0,0,0,0.12);
+            --shadow-heavy: 0 8px 32px rgba(0,0,0,0.16);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .hero-background {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 50%, #764ba2 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* 顶部导航背景（不占满全屏） */
+        .topbar-bg {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 50%, #764ba2 100%);
+            position: relative;
+        }
+
+        .hero-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.05"><circle cx="30" cy="30" r="1"/></g></svg>') repeat;
+            opacity: 0.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            color: white;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo i {
+            font-size: 32px;
+            margin-right: 12px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-title-wrapper {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .logo-subtitle {
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0.85;
+        }
+
+        /* Markdown 渲染容器 */
+        .markdown-body {
+            background: #0b1221;
+            color: #e6e8ee;
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            overflow-x: auto;
+        }
+        .markdown-body table {
+            display: block;
+            overflow-x: auto;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .markdown-body img { max-width: 100%; height: auto; border-radius: 8px; }
+        .markdown-body a { color: #60a5fa; }
+
+        /* 旅游问答区样式 */
+        .qa-section { padding: 40px 0; background: var(--bg-white); }
+        .chat-box {
+            background: rgba(255,255,255,0.75);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow-light);
+        }
+        .messages { max-height: 420px; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 8px; }
+        .msg { display: flex; gap: 10px; }
+        .msg .bubble { flex: 1; border-radius: 12px; padding: 10px 12px; }
+        .msg.user .bubble { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.35); }
+        .msg.bot .bubble { background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.35); }
+        .qa-input-row { display: flex; gap: 12px; margin-top: 12px; }
+        .qa-input-row textarea {
+            flex: 1; min-height: 60px; border-radius: 12px; border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.9); color: var(--text-dark); padding: 10px 12px; resize: vertical;
+        }
+        .qa-input-row button {
+            border-radius: 12px; padding: 10px 16px; border: none; cursor: pointer; background: linear-gradient(45deg, #3b82f6, #06b6d4); color: white; font-weight: 600;
+        }
+        .qa-input-row button[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .nav-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        /* 品牌域名与口号 */
+        .brand-banner {
+            text-align: center;
+            color: white;
+            padding: 16px 8px 24px;
+        }
+        .brand-banner .domain {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .brand-banner .tagline {
+            margin-top: 6px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .language-switcher {
+            display: flex;
+            gap: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: var(--border-radius-sm);
+            padding: 4px;
+            backdrop-filter: blur(10px);
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: white;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .lang-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .lang-btn.active {
+            background: rgba(255,255,255,0.3);
+            font-weight: 600;
+        }
+
+        .hero-content {
+            text-align: center;
+            padding: 80px 0;
+            color: white;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #FFD700, #FFA500, #FF6B6B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            opacity: 0.85;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--secondary-color);
+            color: white;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+            background: #E6941F;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+        }
+
+        .services-section {
+            background: var(--bg-white);
+            margin-top: 0;
+            border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+            padding: 40px 0 80px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .service-card {
+            background: var(--bg-white);
+            border-radius: var(--border-radius-lg);
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .service-card:hover::before {
+            transform: translateX(0);
+        }
+
+        .service-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .service-card.active {
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 32px rgba(74, 144, 226, 0.2);
+        }
+
+        .service-card.active::before {
+            transform: translateX(0);
+        }
+
+        .service-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 32px;
+            color: white;
+            position: relative;
+        }
+
+        .service-icon.travel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .service-icon.business {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .service-icon.learning {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .service-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 16px;
+        }
+
+        .service-description {
+            color: var(--text-light);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .service-status {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+        .status-active {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-coming-soon {
+            background: rgba(243, 156, 18, 0.1);
+            color: var(--warning-color);
+        }
+
+        .service-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+
+        .service-features li {
+            padding: 8px 0;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+        }
+
+        .service-features li::before {
+            content: '✓';
+            color: var(--success-color);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .service-action {
+            width: 100%;
+        }
+
+        .btn-disabled {
+            background: #BDC3C7;
+            color: #7F8C8D;
+            cursor: not-allowed;
+        }
+
+        .btn-disabled:hover {
+            transform: none;
+            box-shadow: var(--shadow-light);
+        }
+
+        .features-section {
+            background: var(--bg-light);
+            padding: 80px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-item {
+            text-align: center;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 24px;
+        }
+
+        .footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 60px 0 30px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 8px;
+        }
+
+        .footer-section ul li a {
+            color: #BDC3C7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section ul li a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #34495e;
+            color: #BDC3C7;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 0 16px;
+            }
+        }
+
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- React应用将在这里渲染 -->
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // 多语言配置
+        const languages = {
+            zh: {
+                title: "AI智能助手",
+                subtitle: "让AI成为您的生活伙伴",
+                description: "体验下一代AI多智能体服务平台，从旅行规划到商用分析，我们为您提供专业、智能、个性化的解决方案",
+                startExperience: "开始体验",
+                learnMore: "了解更多",
+                services: "服务",
+                features: "特色",
+                about: "关于",
+                contact: "联系",
+                servicesTitle: "智能体服务",
+                servicesSubtitle: "多个专业智能体协同工作，为您提供全方位的智能化解决方案",
+                featuresTitle: "为什么选择我们",
+                featuresSubtitle: "先进的AI技术，优质的用户体验，让智能助手真正成为您的生活伙伴",
+                travelAgent: {
+                    title: "旅行规划智能体",
+                    description: "智能制定个性化旅行计划，包括路线规划、酒店预订、美食推荐等全方位服务",
+                    status: "已启用",
+                    features: ["智能路线规划", "酒店价格对比", "当地美食推荐", "预算智能分析", "实时天气信息"],
+                    action: "立即使用"
+                },
+                businessAgent: {
+                    title: "商用分析智能体",
+                    description: "数据驱动的商业决策支持，提供市场分析、竞品调研、财务分析等专业服务",
+                    status: "即将推出",
+                    features: ["市场趋势分析", "竞品深度调研", "财务数据分析", "投资机会识别", "商业计划生成"],
+                    action: "敬请期待"
+                },
+                learningAgent: {
+                    title: "知识学习智能体",
+                    description: "个性化学习路径规划，知识图谱构建，让学习更高效、更有趣",
+                    status: "即将推出",
+                    features: ["个性化学习路径", "知识图谱构建", "学习效果评估", "智能答疑解惑", "学习计划优化"],
+                    action: "敬请期待"
+                },
+                featureItems: [
+                    {
+                        title: "多智能体协作",
+                        description: "多个专业AI智能体协同工作，提供更准确、更全面的解决方案"
+                    },
+                    {
+                        title: "全平台支持",
+                        description: "支持Web、iOS、Android、桌面端等全平台，随时随地享受AI服务"
+                    },
+                    {
+                        title: "安全可靠",
+                        description: "企业级安全保障，数据加密传输，保护您的隐私信息"
+                    },
+                    {
+                        title: "快速响应",
+                        description: "毫秒级响应速度，云端高性能计算，让AI服务更加流畅"
+                    }
+                ]
+            },
+            en: {
+                title: "AI Assistant",
+                subtitle: "Let AI be your life partner",
+                description: "Experience the next-generation AI multi-agent service platform, from travel planning to business analysis, we provide professional, intelligent, and personalized solutions",
+                startExperience: "Get Started",
+                learnMore: "Learn More",
+                services: "Services",
+                features: "Features",
+                about: "About",
+                contact: "Contact",
+                servicesTitle: "AI Agent Services",
+                servicesSubtitle: "Multiple professional AI agents work together to provide comprehensive intelligent solutions",
+                featuresTitle: "Why Choose Us",
+                featuresSubtitle: "Advanced AI technology and excellent user experience make AI assistants truly your life partners",
+                travelAgent: {
+                    title: "Travel Planning Agent",
+                    description: "Intelligently create personalized travel plans, including route planning, hotel booking, food recommendations and comprehensive services",
+                    status: "Available",
+                    features: ["Smart Route Planning", "Hotel Price Comparison", "Local Food Recommendations", "Smart Budget Analysis", "Real-time Weather Info"],
+                    action: "Use Now"
+                },
+                businessAgent: {
+                    title: "Business Analysis Agent",
+                    description: "Data-driven business decision support, providing market analysis, competitive research, financial analysis and other professional services",
+                    status: "Coming Soon",
+                    features: ["Market Trend Analysis", "Competitive Research", "Financial Data Analysis", "Investment Opportunities", "Business Plan Generation"],
+                    action: "Coming Soon"
+                },
+                learningAgent: {
+                    title: "Learning Assistant Agent",
+                    description: "Personalized learning path planning and knowledge graph construction to make learning more efficient and interesting",
+                    status: "Coming Soon",
+                    features: ["Personalized Learning Paths", "Knowledge Graph Construction", "Learning Effect Assessment", "Smart Q&A", "Learning Plan Optimization"],
+                    action: "Coming Soon"
+                },
+                featureItems: [
+                    {
+                        title: "Multi-Agent Collaboration",
+                        description: "Multiple professional AI agents work together to provide more accurate and comprehensive solutions"
+                    },
+                    {
+                        title: "Cross-Platform Support",
+                        description: "Support Web, iOS, Android, desktop and other platforms, enjoy AI services anytime, anywhere"
+                    },
+                    {
+                        title: "Secure & Reliable",
+                        description: "Enterprise-level security, encrypted data transmission, protecting your privacy information"
+                    },
+                    {
+                        title: "Fast Response",
+                        description: "Millisecond response speed, cloud high-performance computing, making AI services smoother"
+                    }
+                ]
+            }
+        };
+
+        // 主应用组件
+        function App() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+            const [language, setLanguage] = useState('zh');
+
+            const t = languages[language];
+
+            const domain = 'gitagent.io';
+            const taglines = {
+                zh: 'gitagent.io — 面向创作者与创业者的多智能体助手',
+                en: 'gitagent.io — The multi‑agent assistant for creators and founders'
+            };
+
+            return (
+                <div className="app">
+                    <Header currentUser={currentUser} language={language} setLanguage={setLanguage} t={t} />
+                    {/* 顶部Logo已展示域名+口号，此处无需重复品牌横幅 */}
+                    {/* 移除全屏Hero，直接显示服务区作为首页主体 */}
+                    <ServicesSection t={t} />
+                    <TravelQASection />
+                    <FeaturesSection t={t} />
+                    <Footer t={t} language={language} />
+                </div>
+            );
+        }
+
+        // 头部组件
+        function Header({ currentUser, language, setLanguage, t }) {
+            return (
+                <div className="topbar-bg">
+                    <div className="container">
+                        <header className="app-header">
+                            <a href="/" className="logo" title="gitagent.io">
+                                <i className="fas fa-brain"></i>
+                                <span className="logo-title-wrapper">
+                                    <span>gitagent.io</span>
+                                    <span className="logo-subtitle">{language === 'zh' ? '面向创作者与创业者的多智能体助手' : 'The multi‑agent assistant for creators and founders'}</span>
+                                </span>
+                            </a>
+                            <nav>
+                                <ul className="nav-menu">
+                                    <li><a href="#services">{t.services}</a></li>
+                                    <li><a href="#qa">{language === 'zh' ? '咨询' : 'Q&A'}</a></li>
+                                    <li><a href="#features">{t.features}</a></li>
+                                    <li><a href="#about">{t.about}</a></li>
+                                    <li><a href="#contact">{t.contact}</a></li>
+                                    <li>
+                                        <div className="language-switcher">
+                                            <button 
+                                                className={`lang-btn ${language === 'zh' ? 'active' : ''}`}
+                                                onClick={() => setLanguage('zh')}
+                                            >
+                                                中文
+                                            </button>
+                                            <button 
+                                                className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+                                                onClick={() => setLanguage('en')}
+                                            >
+                                                EN
+                                            </button>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </header>
+                    </div>
+                </div>
+            );
+        }
+
+        // 英雄区组件（已不在首页展示，保留以备后用）
+        function HeroSection({ onStartJourney, t }) { return null; }
+
+        // 服务区组件
+        function ServicesSection({ t }) {
+            const services = [
+                {
+                    id: 'travel',
+                    icon: 'fas fa-plane-departure',
+                    iconClass: 'travel',
+                    title: t.travelAgent.title,
+                    description: t.travelAgent.description,
+                    status: 'active',
+                    statusText: t.travelAgent.status,
+                    features: t.travelAgent.features,
+                    actionText: t.travelAgent.action,
+                    actionLink: '/travel_planner_frontend.html'
+                },
+                {
+                    id: 'business',
+                    icon: 'fas fa-chart-line',
+                    iconClass: 'business',
+                    title: t.businessAgent.title,
+                    description: t.businessAgent.description,
+                    status: 'coming-soon',
+                    statusText: t.businessAgent.status,
+                    features: t.businessAgent.features,
+                    actionText: t.businessAgent.action,
+                    actionLink: '#'
+                },
+                {
+                    id: 'learning',
+                    icon: 'fas fa-graduation-cap',
+                    iconClass: 'learning',
+                    title: t.learningAgent.title,
+                    description: t.learningAgent.description,
+                    status: 'coming-soon',
+                    statusText: t.learningAgent.status,
+                    features: t.learningAgent.features,
+                    actionText: t.learningAgent.action,
+                    actionLink: '#'
+                }
+            ];
+
+            return (
+                <section className="services-section" id="services">
+                    <div className="container">
+                        <div className="section-header">
+                            <h2 className="section-title">{t.servicesTitle}</h2>
+                            <p className="section-subtitle">
+                                {t.servicesSubtitle}
+                            </p>
+                        </div>
+                        <div className="services-grid">
+                            {services.map(service => (
+                                <ServiceCard key={service.id} service={service} />
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // 服务卡片组件
+        function ServiceCard({ service }) {
+            const handleAction = () => {
+                if (service.status === 'active') {
+                    window.location.href = service.actionLink;
+                }
+            };
+
+            return (
+                <div className={`service-card ${service.status === 'active' ? 'active' : ''}`}>
+                    <div className={`service-icon ${service.iconClass}`}>
+                        <i className={service.icon}></i>
+                    </div>
+                    <h3 className="service-title">{service.title}</h3>
+                    <span className={`service-status ${service.status === 'active' ? 'status-active' : 'status-coming-soon'}`}>
+                        {service.statusText}
+                    </span>
+                    <p className="service-description">{service.description}</p>
+                    <ul className="service-features">
+                        {service.features.map((feature, index) => (
+                            <li key={index}>{feature}</li>
+                        ))}
+                    </ul>
+                    <button 
+                        className={`btn service-action ${service.status === 'active' ? 'btn-primary' : 'btn-disabled'}`}
+                        onClick={handleAction}
+                        disabled={service.status !== 'active'}
+                    >
+                        {service.actionText}
+                    </button>
+                </div>
+            );
+        }
+
+        // 旅游相关问题咨询模块
+        function TravelQASection() {
+            const [messages, setMessages] = React.useState([]); // {role:'user'|'bot', html?:string, text?:string}
+            const [input, setInput] = React.useState('');
+            const [loading, setLoading] = React.useState(false);
+            const API_BASE_URL = 'http://localhost:8000';
+
+            // Markdown 渲染到安全HTML
+            function renderMarkdown(mdText) {
+                try {
+                    const html = window.marked.parse(mdText, { gfm: true, breaks: true });
+                    const safe = DOMPurify.sanitize(html);
+                    return safe;
+                } catch (e) {
+                    return DOMPurify.sanitize(`<pre>${mdText}</pre>`);
+                }
+            }
+
+            // 渲染Mermaid与代码高亮
+            function enhanceMarkdown() {
+                try { if (window.hljs) window.hljs.highlightAll(); } catch (e) {}
+                try {
+                    if (window.mermaid) {
+                        window.mermaid.initialize({ startOnLoad: false });
+                        const nodes = document.querySelectorAll('.markdown-body pre code.language-mermaid');
+                        nodes.forEach((codeEl, idx) => {
+                            const code = codeEl.textContent;
+                            const pre = codeEl.closest('pre');
+                            const container = document.createElement('div');
+                            container.className = 'my-3';
+                            pre.parentNode.replaceChild(container, pre);
+                            const id = 'mermaid-' + Date.now() + '-' + idx;
+                            // mermaid.render 10.x 返回Promise
+                            window.mermaid.render(id, code).then(({svg}) => { container.innerHTML = svg; }).catch(() => {
+                                container.innerHTML = `<pre class="markdown-body">${code}</pre>`;
+                            });
+                        });
+                    }
+                } catch (e) {}
+            }
+
+            async function handleSubmit() {
+                if (!input.trim() || loading) return;
+                const userMsg = { role: 'user', text: input };
+                setMessages(prev => [...prev, userMsg]);
+                setLoading(true);
+                const content = input.trim();
+                setInput('');
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/api/generate`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content, user_id: 'travel_qa_' + Date.now() })
+                    });
+                    const data = await resp.json();
+                    const taskId = data.task_id;
+                    // 轮询
+                    const timer = setInterval(async () => {
+                        try {
+                            const s = await fetch(`${API_BASE_URL}/api/generate/${taskId}/status`);
+                            const sd = await s.json();
+                            if (sd.status === 'completed') {
+                                clearInterval(timer);
+                                const md = sd.travel_result ? sd.travel_result : await (await fetch(`${API_BASE_URL}/api/generate/${taskId}/download`)).text();
+                                const html = renderMarkdown(md);
+                                setMessages(prev => [...prev, { role: 'bot', html }]);
+                                setLoading(false);
+                                setTimeout(enhanceMarkdown, 50);
+                            } else if (sd.status === 'failed') {
+                                clearInterval(timer);
+                                setMessages(prev => [...prev, { role: 'bot', html: '<div class="markdown-body">请求失败，请稍后再试。</div>' }]);
+                                setLoading(false);
+                            }
+                        } catch (e) {
+                            clearInterval(timer);
+                            setMessages(prev => [...prev, { role: 'bot', html: '<div class="markdown-body">网络异常，请重试。</div>' }]);
+                            setLoading(false);
+                        }
+                    }, 1500);
+                } catch (e) {
+                    setMessages(prev => [...prev, { role: 'bot', html: '<div class="markdown-body">提交失败，请稍后再试。</div>' }]);
+                    setLoading(false);
+                }
+            }
+
+            return (
+                <section className="qa-section" id="qa">
+                    <div className="container">
+                        <div className="section-header">
+                            <h2 className="section-title">旅游相关问题咨询</h2>
+                            <p className="section-subtitle">自由输入旅游相关问题或内容，系统将智能判断并按现有流程处理与返回结果（支持 Markdown、表格、代码、流程图、图片、链接）。</p>
+                        </div>
+                        <div className="chat-box">
+                            <div className="messages">
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`msg ${m.role}`}>
+                                        <div className="bubble">
+                                            {m.html ? (
+                                                <div className="markdown-body" dangerouslySetInnerHTML={{ __html: m.html }}></div>
+                                            ) : (
+                                                <div>{m.text}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {loading && (
+                                    <div className="msg bot"><div className="bubble">正在处理，请稍候...</div></div>
+                                )}
+                            </div>
+                            <div className="qa-input-row">
+                                <textarea placeholder="请输入您的旅游问题或描述（支持任意内容）" value={input} onChange={e => setInput(e.target.value)}></textarea>
+                                <button onClick={handleSubmit} disabled={loading}>{loading ? '提交中...' : '提交'}</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // 特色功能区组件
+        function FeaturesSection({ t }) {
+            const features = [
+                {
+                    icon: 'fas fa-robot',
+                    title: t.featureItems[0].title,
+                    description: t.featureItems[0].description
+                },
+                {
+                    icon: 'fas fa-mobile-alt',
+                    title: t.featureItems[1].title,
+                    description: t.featureItems[1].description
+                },
+                {
+                    icon: 'fas fa-shield-alt',
+                    title: t.featureItems[2].title,
+                    description: t.featureItems[2].description
+                },
+                {
+                    icon: 'fas fa-lightning-bolt',
+                    title: t.featureItems[3].title,
+                    description: t.featureItems[3].description
+                }
+            ];
+
+            return (
+                <section className="features-section" id="features">
+                    <div className="container">
+                        <div className="section-header">
+                            <h2 className="section-title">{t.featuresTitle}</h2>
+                            <p className="section-subtitle">
+                                {t.featuresSubtitle}
+                            </p>
+                        </div>
+                        <div className="features-grid">
+                            {features.map((feature, index) => (
+                                <div key={index} className="feature-item">
+                                    <div className="feature-icon">
+                                        <i className={feature.icon}></i>
+                                    </div>
+                                    <h3>{feature.title}</h3>
+                                    <p>{feature.description}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // 页脚组件
+        function Footer({ t, language }) {
+            const currentYear = new Date().getFullYear();
+            
+            return (
+                <footer className="footer">
+                    <div className="container">
+                        <div className="footer-content">
+                            <div className="footer-section">
+                                <h3>{language === 'zh' ? '产品服务' : 'Products & Services'}</h3>
+                                <ul>
+                                    <li><a href="#travel">{t.travelAgent.title}</a></li>
+                                    <li><a href="#business">{t.businessAgent.title}</a></li>
+                                    <li><a href="#learning">{t.learningAgent.title}</a></li>
+                                    <li><a href="#more">{language === 'zh' ? '更多服务' : 'More Services'}</a></li>
+                                </ul>
+                            </div>
+                            <div className="footer-section">
+                                <h3>{language === 'zh' ? '技术支持' : 'Technical Support'}</h3>
+                                <ul>
+                                    <li><a href="#api">{language === 'zh' ? 'API文档' : 'API Documentation'}</a></li>
+                                    <li><a href="#sdk">{language === 'zh' ? 'SDK下载' : 'SDK Download'}</a></li>
+                                    <li><a href="#help">{language === 'zh' ? '帮助中心' : 'Help Center'}</a></li>
+                                    <li><a href="#status">{language === 'zh' ? '服务状态' : 'Service Status'}</a></li>
+                                </ul>
+                            </div>
+                            <div className="footer-section">
+                                <h3>{t.about}</h3>
+                                <ul>
+                                    <li><a href="#company">{language === 'zh' ? '公司介绍' : 'Company'}</a></li>
+                                    <li><a href="#team">{language === 'zh' ? '团队成员' : 'Team'}</a></li>
+                                    <li><a href="#career">{language === 'zh' ? '加入我们' : 'Careers'}</a></li>
+                                    <li><a href="#news">{language === 'zh' ? '新闻动态' : 'News'}</a></li>
+                                </ul>
+                            </div>
+                            <div className="footer-section">
+                                <h3>{t.contact}</h3>
+                                <ul>
+                                    <li><a href="mailto:contact@ai-assistant.com">{language === 'zh' ? '邮箱联系' : 'Email'}</a></li>
+                                    <li><a href="#wechat">{language === 'zh' ? '微信客服' : 'WeChat Support'}</a></li>
+                                    <li><a href="#discord">{language === 'zh' ? 'Discord社区' : 'Discord Community'}</a></li>
+                                    <li><a href="#phone">{language === 'zh' ? '电话支持' : 'Phone Support'}</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="footer-bottom">
+                            <p>&copy; {currentYear} {t.title}. {language === 'zh' ? '保留所有权利' : 'All rights reserved'}. | <a href="#privacy">{language === 'zh' ? '隐私政策' : 'Privacy Policy'}</a> | <a href="#terms">{language === 'zh' ? '服务条款' : 'Terms of Service'}</a></p>
+                        </div>
+                    </div>
+                </footer>
+            );
+        }
+
+        // 工具函数
+        function handleStartJourney() {
+            const travelSection = document.getElementById('services');
+            if (travelSection) {
+                travelSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // 渲染应用
+        const root = ReactDOM.createRoot(document.getElementById('app'));
+        root.render(<App />);
+
+        // PWA支持
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -562,8 +562,112 @@ grep "ERROR.*MCP" logs/server.log
 
 Cooragent的MCP组件生态为多智能体系统提供了强大的工具支持，通过合理配置和维护，可以显著提升系统的功能丰富度和实用性。
 
+## 🌟 真实旅游API集成配置（2025-08-07更新）
+
+### 真实MCP客户端配置
+
+为了提供真实的旅游数据服务，系统已集成以下真实API：
+
+#### 1. 配置真实API密钥
+
+创建或更新`.env`文件：
+```bash
+# 高德地图API（地理信息、天气、路线）
+AMAP_API_KEY=demo_amap_key_please_replace
+
+# 携程API（酒店、机票、旅游套餐）
+CTRIP_API_KEY=demo_ctrip_key_please_replace
+
+# 大众点评API（餐厅、美食推荐）
+DIANPING_API_KEY=demo_dianping_key_please_replace
+```
+
+#### 2. 真实MCP服务器配置
+
+更新`config/mcp.json`：
+```json
+{
+    "mcpServers": {
+        "amap": {
+            "url": "https://restapi.amap.com/v3",
+            "env": {
+                "AMAP_API_KEY": "demo_amap_key_please_replace"
+            }
+        },
+        "ctrip": {
+            "url": "https://api.ctrip.com/v1",
+            "env": {
+                "CTRIP_API_KEY": "demo_ctrip_key_please_replace"
+            }
+        },
+        "dianping": {
+            "url": "https://api.dianping.com/v1",
+            "env": {
+                "DIANPING_API_KEY": "demo_dianping_key_please_replace"
+            }
+        }
+    }
+}
+```
+
+#### 3. API注册地址
+
+| 服务商 | 注册地址 | 说明 |
+|--------|----------|------|
+| 🗺️ **高德地图** | https://lbs.amap.com/api/ | 个人开发者友好，免费额度充足 |
+| 🏨 **携程** | https://open.ctrip.com/ | 需要商业合作，企业账号 |
+| 🍜 **大众点评** | https://open.dianping.com/ | 需要审核，个人开发可能受限 |
+
+#### 4. 真实MCP客户端特性
+
+✅ **已实现功能**：
+- 高德地图地理编码和天气查询
+- 携程酒店和航班信息查询框架
+- 大众点评餐厅和美食推荐框架
+- 异步HTTP请求处理
+- 错误处理和降级机制
+- API响应数据结构化处理
+
+✅ **安全特性**：
+- 环境变量管理API密钥
+- HTTP超时和重试机制
+- 错误日志记录
+- 降级服务支持
+
+#### 5. 使用示例
+
+启动系统后，真实MCP工具会自动调用：
+
+```python
+# 系统自动调用真实API
+from src.tools.real_mcp_client import call_real_mcp_tools
+
+# 获取旅游数据
+mcp_data = await call_real_mcp_tools(
+    tools_config={'amap': {}, 'ctrip': {}, 'dianping': {}},
+    destination="北京",
+    departure="上海"
+)
+```
+
+#### 6. 快速配置指南
+
+1. **获取高德地图API密钥**（推荐优先）
+2. **更新环境变量文件**
+3. **重启服务验证**：`./restart_with_clean_logs.sh`
+4. **测试旅游规划功能**
+
+详细配置说明请参考：`docs/MCP_API_Keys_Setup.md`
+
+### 系统架构更新
+
+- 移除了所有模拟MCP调用代码
+- 集成真实HTTP API客户端
+- 实现了完整的错误处理和降级机制
+- 支持多个旅游API服务商同时调用
+
 ---
 
-**最后更新**: 2025-07-26  
-**文档版本**: v1.0  
+**最后更新**: 2025-08-07  
+**文档版本**: v2.0（真实API集成版）  
 **适用系统**: Cooragent v1.0+ 

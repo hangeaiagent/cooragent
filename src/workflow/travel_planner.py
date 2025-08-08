@@ -324,7 +324,7 @@ async def travel_planner_node(state: State) -> Command[Literal["publisher", "__e
         "travel_planner_complete",
         f"🎯 旅游规划器完成，准备移交给: {goto}",
         next_node=goto,
-        planning_status="completed" if goto == "publisher" else "terminated"
+        planning_status="completed" if goto in ["publisher", "travel_publisher"] else "terminated"
     )
     logger.info(f"中文日志: {complete_log['data']['message']}")
     
