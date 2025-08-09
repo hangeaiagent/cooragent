@@ -55,24 +55,32 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="gradient-bg min-h-screen">
+        <!-- 语言切换按钮 -->
+        <div class="absolute top-4 right-4 z-10">
+            <div class="bg-white rounded-lg p-1 shadow-md">
+                <button id="langZH" class="px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white">中文</button>
+                <button id="langEN" class="px-3 py-2 rounded text-sm font-semibold text-gray-700 hover:bg-gray-100">English</button>
+            </div>
+        </div>
+        
         <div class="container mx-auto px-4 py-8">
             <!-- 头部 -->
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-white mb-4">
                     <i class="fas fa-plane-departure mr-3"></i>
-                    旅游规划智能体
+                    <span data-lang-key="page-title">旅游规划智能体</span>
                 </h1>
-                <p class="text-white text-lg opacity-90">让AI为您定制完美的旅行计划和旅游咨询</p>
+                <p class="text-white text-lg opacity-90" data-lang-key="page-subtitle">让AI为您定制完美的旅行计划和旅游咨询</p>
             </div>
 
             <!-- 功能选择标签 -->
             <div class="flex justify-center mb-6">
                 <div class="bg-white rounded-lg p-1 shadow-lg">
                     <button id="planningTab" class="px-6 py-3 rounded-md text-white font-semibold bg-blue-600 transition duration-300">
-                        <i class="fas fa-route mr-2"></i>旅游规划
+                        <i class="fas fa-route mr-2"></i><span data-lang-key="tab-planning">旅游规划</span>
                     </button>
                     <button id="consultationTab" class="px-6 py-3 rounded-md text-gray-700 font-semibold hover:bg-gray-100 transition duration-300">
-                        <i class="fas fa-question-circle mr-2"></i>旅游咨询
+                        <i class="fas fa-question-circle mr-2"></i><span data-lang-key="tab-consultation">旅游咨询</span>
                     </button>
                 </div>
             </div>
@@ -81,18 +89,19 @@
             <div id="consultationArea" class="max-w-4xl mx-auto mb-8 hidden">
                 <div class="result-card rounded-lg p-6 shadow-xl">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-comments mr-2"></i>旅游咨询
+                        <i class="fas fa-comments mr-2"></i><span data-lang-key="consultation-title">旅游咨询</span>
                     </h3>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-gray-700 font-semibold mb-2">请输入您的旅游咨询问题</label>
+                            <label class="block text-gray-700 font-semibold mb-2" data-lang-key="consultation-label">请输入您想咨询的旅游问题或目的地旅游景区、餐饮等进行</label>
                             <textarea id="consultationQuestion" 
                                 class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                                 rows="4" 
+                                data-lang-key="consultation-placeholder"
                                 placeholder="例如：北京有什么好玩的？上海有哪些必去景点？三亚美食推荐等..."></textarea>
                         </div>
                         <button id="consultationBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                            <i class="fas fa-search mr-2"></i>开始咨询
+                            <i class="fas fa-search mr-2"></i><span data-lang-key="consultation-btn">开始咨询</span>
                         </button>
                     </div>
                 </div>
@@ -105,43 +114,43 @@
                         <div class="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-map-marker-alt mr-2"></i>出发地
+                                    <i class="fas fa-map-marker-alt mr-2"></i><span data-lang-key="departure-label">出发地</span>
                                 </label>
                                 <input type="text" id="departure" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder="请输入出发城市，如：北京" required>
+                                       data-lang-key="departure-placeholder" placeholder="请输入出发城市，如：北京" required>
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-map-marker-alt mr-2"></i>目的地
+                                    <i class="fas fa-map-marker-alt mr-2"></i><span data-lang-key="destination-label">目的地</span>
                                 </label>
                                 <input type="text" id="destination" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder="请输入目标城市，如：成都" required>
+                                       data-lang-key="destination-placeholder" placeholder="请输入目标城市，如：成都" required>
                             </div>
                         </div>
 
                         <div class="grid md:grid-cols-3 gap-6">
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-calendar-alt mr-2"></i>出发日期
+                                    <i class="fas fa-calendar-alt mr-2"></i><span data-lang-key="start-date-label">出发日期</span>
                                 </label>
                                 <input type="date" id="startDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-calendar-check mr-2"></i>返程日期
+                                    <i class="fas fa-calendar-check mr-2"></i><span data-lang-key="end-date-label">返程日期</span>
                                 </label>
                                 <input type="date" id="endDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-users mr-2"></i>人数
+                                    <i class="fas fa-users mr-2"></i><span data-lang-key="travelers-label">人数</span>
                                 </label>
                                 <select id="travelers" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-                                    <option value="1">1人</option>
-                                    <option value="2">2人</option>
-                                    <option value="3">3人</option>
-                                    <option value="4">4人</option>
-                                    <option value="5+">5人以上</option>
+                                    <option value="1" data-lang-key="travelers-1">1人</option>
+                                    <option value="2" data-lang-key="travelers-2">2人</option>
+                                    <option value="3" data-lang-key="travelers-3">3人</option>
+                                    <option value="4" data-lang-key="travelers-4">4人</option>
+                                    <option value="5+" data-lang-key="travelers-5+">5人以上</option>
                                 </select>
                             </div>
                         </div>
@@ -149,7 +158,7 @@
                         <div class="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-dollar-sign mr-2"></i>预算范围（元）
+                                    <i class="fas fa-dollar-sign mr-2"></i><span data-lang-key="budget-label">预算范围（元）</span>
                                 </label>
                                 <select id="budget" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
                                     <option value="经济型（2000-5000）">经济型（2000-5000）</option>
@@ -159,7 +168,7 @@
                             </div>
                             <div>
                                 <label class="block text-gray-700 font-semibold mb-2">
-                                    <i class="fas fa-heart mr-2"></i>旅行偏好
+                                    <i class="fas fa-heart mr-2"></i><span data-lang-key="preference-label">旅行偏好</span>
                                 </label>
                                 <select id="preference" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
                                     <option value="文化历史">文化历史</option>
@@ -174,16 +183,16 @@
 
                         <div>
                             <label class="block text-gray-700 font-semibold mb-2">
-                                <i class="fas fa-comment mr-2"></i>特殊需求（可选）
+                                <i class="fas fa-comment mr-2"></i><span data-lang-key="special-requests-label">特殊需求（可选）</span>
                             </label>
                             <textarea id="specialRequests" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                      rows="3" placeholder="请描述您的特殊需求，如：无障碍设施、素食餐厅、儿童友好等"></textarea>
+                                      rows="3" data-lang-key="special-requests-placeholder" placeholder="请描述您的特殊需求，如：无障碍设施、素食餐厅、儿童友好等"></textarea>
                         </div>
 
                         <div class="text-center">
                             <button type="submit" id="generateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 transform hover:scale-105">
                                 <i class="fas fa-magic mr-2"></i>
-                                生成旅行计划
+                                <span data-lang-key="generate-btn">生成旅行计划</span>
                             </button>
                         </div>
                     </form>
@@ -752,6 +761,104 @@ ${specialRequests ? `特殊需求：${specialRequests}` : ''}
             
             document.getElementById('startDate').valueAsDate = today;
             document.getElementById('endDate').valueAsDate = tomorrow;
+        });
+
+        // 多语言支持
+        const translations = {
+            'zh': {
+                'page-title': '旅游规划智能体',
+                'page-subtitle': '让AI为您定制完美的旅行计划和旅游咨询',
+                'tab-planning': '旅游规划',
+                'tab-consultation': '旅游咨询',
+                'consultation-title': '旅游咨询',
+                'consultation-label': '请输入您想咨询的旅游问题或目的地旅游景区、餐饮等进行',
+                'consultation-placeholder': '例如：北京有什么好玩的？上海有哪些必去景点？三亚美食推荐等...',
+                'consultation-btn': '开始咨询',
+                'departure-label': '出发地',
+                'departure-placeholder': '请输入出发城市，如：北京',
+                'destination-label': '目的地',
+                'destination-placeholder': '请输入目标城市，如：成都',
+                'start-date-label': '出发日期',
+                'end-date-label': '返程日期',
+                'travelers-label': '人数',
+                'travelers-1': '1人',
+                'travelers-2': '2人',
+                'travelers-3': '3人',
+                'travelers-4': '4人',
+                'travelers-5+': '5人以上',
+                'budget-label': '预算范围（元）',
+                'preference-label': '旅行偏好',
+                'special-requests-label': '特殊需求（可选）',
+                'special-requests-placeholder': '请描述您的特殊需求，如：无障碍设施、素食餐厅、儿童友好等',
+                'generate-btn': '生成旅行计划'
+            },
+            'en': {
+                'page-title': 'Travel Planning Agent',
+                'page-subtitle': 'Let AI customize the perfect travel plan and tourism consultation for you',
+                'tab-planning': 'Travel Planning',
+                'tab-consultation': 'Travel Consultation',
+                'consultation-title': 'Travel Consultation',
+                'consultation-label': 'Please enter your travel questions about destinations, attractions, dining, etc.',
+                'consultation-placeholder': 'For example: What\'s fun in Beijing? Must-visit attractions in Shanghai? Sanya food recommendations...',
+                'consultation-btn': 'Start Consultation',
+                'departure-label': 'Departure',
+                'departure-placeholder': 'Enter departure city, e.g.: Beijing',
+                'destination-label': 'Destination',
+                'destination-placeholder': 'Enter destination city, e.g.: Chengdu',
+                'start-date-label': 'Departure Date',
+                'end-date-label': 'Return Date',
+                'travelers-label': 'Travelers',
+                'travelers-1': '1 Person',
+                'travelers-2': '2 People',
+                'travelers-3': '3 People',
+                'travelers-4': '4 People',
+                'travelers-5+': '5+ People',
+                'budget-label': 'Budget Range (CNY)',
+                'preference-label': 'Travel Preference',
+                'special-requests-label': 'Special Requirements (Optional)',
+                'special-requests-placeholder': 'Describe your special needs, e.g.: accessibility facilities, vegetarian restaurants, child-friendly...',
+                'generate-btn': 'Generate Travel Plan'
+            }
+        };
+
+        let currentLang = 'zh';
+
+        function switchLanguage(lang) {
+            currentLang = lang;
+            
+            // 更新语言按钮状态
+            document.getElementById('langZH').className = lang === 'zh' 
+                ? 'px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white'
+                : 'px-3 py-2 rounded text-sm font-semibold text-gray-700 hover:bg-gray-100';
+            document.getElementById('langEN').className = lang === 'en' 
+                ? 'px-3 py-2 rounded text-sm font-semibold bg-blue-600 text-white'
+                : 'px-3 py-2 rounded text-sm font-semibold text-gray-700 hover:bg-gray-100';
+            
+            // 更新所有带有 data-lang-key 的元素
+            const elements = document.querySelectorAll('[data-lang-key]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-lang-key');
+                if (translations[lang] && translations[lang][key]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = translations[lang][key];
+                    } else {
+                        element.textContent = translations[lang][key];
+                    }
+                }
+            });
+            
+            // 保存语言选择到本地存储
+            localStorage.setItem('language', lang);
+        }
+
+        // 语言切换事件监听
+        document.getElementById('langZH').addEventListener('click', () => switchLanguage('zh'));
+        document.getElementById('langEN').addEventListener('click', () => switchLanguage('en'));
+
+        // 页面加载时检查语言设置
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedLang = localStorage.getItem('language') || 'zh';
+            switchLanguage(savedLang);
         });
     </script>
 </body>
